@@ -17,6 +17,12 @@ boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/image="uid://bselsbmxrq0g7"
 config/icon="res://icon.svg"
 
+[audio]
+
+; Playback: iOS mutes the default Ambient category with the Ring/Silent switch (speaker
+; silent, Bluetooth still plays). The game is a VN with voice and music, so it should play anyway.
+general/ios/session_category=3
+
 [autoload]
 
 Wa2DataPack="*res://script/Wa2DataPack.cs"
