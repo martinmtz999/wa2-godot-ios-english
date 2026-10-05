@@ -1,7 +1,8 @@
-[gd_scene load_steps=63 format=3 uid="uid://du2ied53oeq1x"]
+[gd_scene load_steps=64 format=3 uid="uid://du2ied53oeq1x"]
 
 [ext_resource type="PackedScene" path="res://scene/BasePage.tscn" id="1_rxglr"]
 [ext_resource type="Script" path="res://script/OptionsMenu.cs" id="2_kvry6"]
+[ext_resource type="Texture2D" path="res://assets/grp/sys_03000.png" id="3_pagetop"]
 [ext_resource type="Texture2D" path="res://assets/grp/sys_03100.png" id="3_jifwb"]
 [ext_resource type="Texture2D" path="res://assets/grp/sys_03101.png" id="4_li33v"]
 [ext_resource type="Texture2D" path="res://assets/grp/sys_03201.png" id="5_kvry6"]
@@ -202,6 +203,9 @@ EroVoiceYesBtn = NodePath("PageList/Option2/EroVoiceBtnList/Wa2Button2")
 EroVoiceNoBtn = NodePath("PageList/Option2/EroVoiceBtnList/Wa2Button")
 LongPressSkipYesBtn = NodePath("PageList/Option1/LongPressSkip/LongPressSkipYes")
 LongPressSkipNoBtn = NodePath("PageList/Option1/LongPressSkip/LongPressSkipNo")
+
+[node name="PageTop" parent="." index="2"]
+texture = ExtResource("3_pagetop")
 
 [node name="PageList" type="Control" parent="." index="7"]
 layout_mode = 1
