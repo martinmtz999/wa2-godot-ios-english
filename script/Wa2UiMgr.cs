@@ -64,7 +64,7 @@ public partial class Wa2UiMgr : Control
 		catch (System.Exception e)
 		{
 			_engine.BootLog("OpenGame:CRASH: " + e);
-			_engine.OpenErrorMessage("进入游戏失败:\n" + e.Message);
+			_engine.OpenErrorMessage(Wa2EngineMain.Tr("进入游戏失败:\n", "Could not enter the game:\n") + e.Message);
 		}
 	}
 	public void ReturnScene()

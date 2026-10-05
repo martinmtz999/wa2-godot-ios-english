@@ -210,7 +210,7 @@ public class Wa2Var
 		{
 			if (IntValue == 0)
 			{
-				return "春希";
+				return Wa2EngineMain.Tr("春希", "Haruki");
 			}
 			else if (IntValue > 0)
 			{
@@ -634,7 +634,7 @@ public class Wa2Script
 				}
 				_engine.BootLog($"CallFunc 0x{funcIdx:X} args:{argInfo}");
 				_engine.BootLog($"CallFunc 0x{funcIdx:X} CRASH: {e}");
-				_engine.OpenErrorMessage($"脚本指令执行失败\n(0x{funcIdx:X}):\n{e.Message}");
+				_engine.OpenErrorMessage(Wa2EngineMain.Tr($"脚本指令执行失败\n(0x{funcIdx:X}):\n{e.Message}", $"Script command failed\n(0x{funcIdx:X}):\n{e.Message}"));
 				// 清掉本次遗留的半条参数，避免污染后续指令
 				Args.Clear();
 				// 让当前脚本终止，否则下一帧会在同一位置重复执行这条失败指令、反复弹错。

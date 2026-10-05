@@ -98,6 +98,9 @@ public partial class Wa2EngineMain : Control
 	// English patch: when en.pak is present, load the original script.pak in place of
 	// ck-gal.pak and en.pak last, so its scripts, UI images and fonts override the JP ones.
 	public static bool EnglishPatch;
+	// UI text: English when the English patch is loaded. Dialog wording comes from the patched PC
+	// WA2.exe where it has the same dialog (research/02-english-text.md).
+	public static string Tr(string cn, string en) => EnglishPatch ? en : cn;
 	private static string[] PakPaths => EnglishPatch
 		? [.. RequiredPakPaths.Select(p => p == "ck-gal.pak" ? "script.pak" : p), "en.pak"]
 		: RequiredPakPaths;
@@ -468,7 +471,7 @@ public partial class Wa2EngineMain : Control
 			}
 			else if (ui == UiMgr.AdvMain && State == GameState.GAME && !AnimatorMgr.WaitAnimation() && !VideoPlayer.IsPlaying() && AdvMain.State == Wa2AdvMain.AdvState.WAIT_CLICK)
 			{
-				UiMgr.OpenConfirm("返回主菜单\n确认吗", "", true, () =>
+				UiMgr.OpenConfirm(Tr("返回主菜单\n确认吗", "Return to the title menu?"), "", true, () =>
 				{
 					UiMgr.UIConfirm.Close();
 					UiMgr.OpenTitleMenu();
@@ -535,7 +538,7 @@ public partial class Wa2EngineMain : Control
 		catch (System.Exception e)
 		{
 			BootLog("Ready CRASH: " + e);
-			OpenErrorMessage("启动失败:\n" + e.Message);
+			OpenErrorMessage(Tr("启动失败:\n", "Startup failed:\n") + e.Message);
 		}
 	}
 
@@ -577,7 +580,7 @@ public partial class Wa2EngineMain : Control
 
 			if (!ResourcesReady)
 			{
-				OpenErrorMessage($"资源读取失败,\n文件{missingPaks[0]}不存在");
+				OpenErrorMessage(Tr($"资源读取失败,\n文件{missingPaks[0]}不存在", $"Could not read game data:\n{missingPaks[0]} is missing"));
 			}
 			else
 			{
@@ -586,7 +589,7 @@ public partial class Wa2EngineMain : Control
 		}
 		else if (!System.IO.Directory.Exists(ProjectSettings.GlobalizePath(Wa2Resource.ResPath)))
 		{
-			OpenErrorMessage("资源文件夹不存在,\n路径" + Wa2Resource.ResPath);
+			OpenErrorMessage(Tr("资源文件夹不存在,\n路径", "Game data folder not found:\n") + Wa2Resource.ResPath);
 			loadPaks = false;
 		}
 
@@ -636,11 +639,11 @@ public partial class Wa2EngineMain : Control
 
 		if (_iosMovieDirectoryWasMissing)
 		{
-			OpenErrorMessage("movie文件夹不存在,\n已自动创建，游戏仍可进入");
+			OpenErrorMessage(Tr("movie文件夹不存在,\n已自动创建，游戏仍可进入", "The movie folder was missing and has been created.\nThe game can still be played."));
 		}
 		else if (missingMovies.Count > 0)
 		{
-			OpenErrorMessage($"MV缺失，游戏将自动跳过,\n文件{missingMovies[0]}不存在");
+			OpenErrorMessage(Tr($"MV缺失，游戏将自动跳过,\n文件{missingMovies[0]}不存在", $"Movies missing; they will be skipped.\n{missingMovies[0]} not found"));
 		}
 	}
 
@@ -828,7 +831,7 @@ public void ClickAdv(bool click = false)
 		catch (System.Exception e)
 		{
 			BootLog("StartScript:" + name + ":CRASH: " + e);
-			OpenErrorMessage("脚本启动失败:\n" + e.Message);
+			OpenErrorMessage(Tr("脚本启动失败:\n", "Could not start the script:\n") + e.Message);
 		}
 	}
 	public void ScriptParse()
@@ -848,7 +851,7 @@ public void ClickAdv(bool click = false)
 		{
 			_scriptParseFaulted = true;
 			BootLog("ScriptParse CRASH: " + e);
-			OpenErrorMessage("脚本解析失败:\n" + e.Message);
+			OpenErrorMessage(Tr("脚本解析失败:\n", "Script error:\n") + e.Message);
 		}
 	}
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -896,7 +899,7 @@ public void ClickAdv(bool click = false)
 				catch (System.Exception e)
 				{
 					BootLog("Process:InitGame CRASH: " + e);
-					OpenErrorMessage("启动失败:\n" + e.Message);
+					OpenErrorMessage(Tr("启动失败:\n", "Startup failed:\n") + e.Message);
 				}
 			}
 
@@ -1285,7 +1288,7 @@ public void ClickAdv(bool click = false)
 		{
 			GD.PrintErr($"{where} CRASH: {e}");
 			Engine.BootLog($"{where} CRASH: {e}");
-			Engine.OpenErrorMessage($"{where} 失败:\n{e.Message}");
+			Engine.OpenErrorMessage(Tr($"{where} 失败:\n{e.Message}", $"{where} failed:\n{e.Message}"));
 		}
 	}
 	public void InitEffect(int flag, int spdX, int spdY, int a4, int count, int a6, int a7)

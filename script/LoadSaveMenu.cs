@@ -106,12 +106,12 @@ public partial class LoadSaveMenu : BasePage
     if (_mode == DataMode.Save)
     {
 
-      _engine.UiMgr.OpenConfirm("存档将被覆盖。\n确定吗？", "存档保存成功", FileAccess.FileExists(GetSavePath(_selectIdx)) && _engine.Prefs.GetConfig("yes_no") == 1, SaveData);
+      _engine.UiMgr.OpenConfirm(Wa2EngineMain.Tr("存档将被覆盖。\n确定吗？", "Overwrite file in this slot?"), Wa2EngineMain.Tr("存档保存成功", "File Saved"), FileAccess.FileExists(GetSavePath(_selectIdx)) && _engine.Prefs.GetConfig("yes_no") == 1, SaveData);
 
     }
     else if (_mode == DataMode.Load && IsValidSaveData(_selectIdx))
     {
-      _engine.UiMgr.OpenConfirm("读取存档。\n确定吗？", "存档读取成功", _engine.Prefs.GetConfig("yes_no") == 1, LoadData);
+      _engine.UiMgr.OpenConfirm(Wa2EngineMain.Tr("读取存档。\n确定吗？", "Load file from this slot?"), Wa2EngineMain.Tr("存档读取成功", "File Loaded"), _engine.Prefs.GetConfig("yes_no") == 1, LoadData);
     }
 
   }

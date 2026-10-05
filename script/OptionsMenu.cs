@@ -179,7 +179,7 @@ public partial class OptionsMenu : BasePage
   }
   public void OnDefaultBtnDown()
   {
-    _engine.UiMgr.OpenConfirm("所有设置返回默认设置。\n确定吗？", "", _engine.Prefs.GetConfig("yes_no") == 1, SetDefault);
+    _engine.UiMgr.OpenConfirm(Wa2EngineMain.Tr("所有设置返回默认设置。\n确定吗？", "Are you sure you want\nto restore defaults?"), "", _engine.Prefs.GetConfig("yes_no") == 1, SetDefault);
 
   }
   public void SetDefault()

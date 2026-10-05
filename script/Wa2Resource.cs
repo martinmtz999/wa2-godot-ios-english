@@ -527,15 +527,15 @@ public class Wa2Resource
 		}
 		catch (System.IO.FileNotFoundException ex)
 		{
-			Wa2EngineMain.Engine.OpenErrorMessage("资源读取失败,\n文件" + fullPath + "不存在:\n" + ex.Message);
+			Wa2EngineMain.Engine.OpenErrorMessage(Wa2EngineMain.Tr("资源读取失败,\n文件" + fullPath + "不存在:\n", "Could not read game data:\n" + fullPath + " is missing:\n") + ex.Message);
 		}
 		catch (System.UnauthorizedAccessException ex)
 		{
-			Wa2EngineMain.Engine.OpenErrorMessage("访问权限获取失败:\n" + ex.Message);
+			Wa2EngineMain.Engine.OpenErrorMessage(Wa2EngineMain.Tr("访问权限获取失败:\n", "No permission to read game data:\n") + ex.Message);
 		}
 		catch (System.IO.IOException ex)
 		{
-			Wa2EngineMain.Engine.OpenErrorMessage("资源读取失败,\n文件" + fullPath + "已损坏:\n" + ex.Message);
+			Wa2EngineMain.Engine.OpenErrorMessage(Wa2EngineMain.Tr("资源读取失败,\n文件" + fullPath + "已损坏:\n", "Could not read game data:\n" + fullPath + " is damaged:\n") + ex.Message);
 		}
 
 	}
