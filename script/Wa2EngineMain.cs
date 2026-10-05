@@ -1241,7 +1241,16 @@ public void ClickAdv(bool click = false)
 	}
 	public void SetScriptIdx(string name)
 	{
-		int idx = Array.IndexOf(Wa2Def.ScriptList, name.ToLower());
+		string key = name.ToLower();
+		int idx = Array.IndexOf(Wa2Def.ScriptList, key);
+		// English patch split scenes ("1006_2", "2031_3") are not in ScriptList. Each is a copy of its
+		// scene's string table with a different range translated, so message indices are the scene's:
+		// track read text under the base scene ("1006", "2031") instead of ignoring it.
+		while (idx < 0 && key.LastIndexOf('_') > 0)
+		{
+			key = key[..key.LastIndexOf('_')];
+			idx = Array.IndexOf(Wa2Def.ScriptList, key);
+		}
 		if (idx >= 0)
 		{
 			if (idx != ScriptIdx)

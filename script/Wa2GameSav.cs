@@ -198,6 +198,13 @@ public class Wa2GameSav
 	private const string BacklogExtensionMagic = "W2BL";
 	private const uint BacklogExtensionVersion = 1;
 	private const int MaxBacklogStringBytes = 64 * 1024;
+	// The fixed save layout keeps only 8 ASCII bytes of a script name, so "1012_030_2" came back as
+	// "1012_030" and loaded the wrong scene. The full names (current script, then the stack in save
+	// order) go in a trailer at the end of the file, found from the end: the fixed layout and older
+	// saves are unchanged, and a save without the trailer loads as before.
+	private const string ScriptNameExtensionMagic = "W2SN";
+	private const uint ScriptNameExtensionVersion = 1;
+	private const int MaxScriptNames = 256;
 	private const int MaxBacklogEntries = 256;
 	private const int MaxVoiceInfosPerBacklog = 64;
 	// public string EffectMode="";
@@ -423,6 +430,7 @@ public class Wa2GameSav
             file.Store32(0);
         }
 		SaveBacklogs(file);
+		SaveScriptNames(file);
 		file.Close();
 	}
 	public void LoadData(int idx)
@@ -430,10 +438,11 @@ public class Wa2GameSav
 		// GD.Print("位置", idx);
 		_engine.Reset();
 		FileAccess file = FileAccess.Open(_engine.SavPath + string.Format("sav{0:D2}.sav", idx), FileAccess.ModeFlags.Read);
+		List<string> names = LoadScriptNames(file);
 		file.Seek(0x1b000 + 32);
 		_engine.GameFlags = new int[0x1d];
 		_engine.ScriptStack.Clear();
-		_engine.Script = new Wa2Script(file.GetBuffer(8).GetStringFromAscii().Replace("\0", ""));
+		_engine.Script = new Wa2Script(FullScriptName(file.GetBuffer(8).GetStringFromAscii().Replace("\0", ""), names, 0));
 		_engine.Calender = new Calender()
 		{
 			Year = (int)file.Get32(),
@@ -549,9 +558,10 @@ public class Wa2GameSav
 		_engine.AdvMain.SetNovelMode(file.Get8() == 1);
 		List<Wa2Script> scripts = new();
 		scripts.Add(_engine.Script);
-		for (int i = 0; i < (int)file.Get32(); i++)
+		int stackCount = (int)file.Get32();
+		for (int i = 0; i < stackCount; i++)
 		{
-			Wa2Script script = LoadScript(file);
+			Wa2Script script = LoadScript(file, FullScriptName(null, names, i + 1));
 			scripts.Add(script);
 		}
 		scripts.Reverse();
@@ -635,6 +645,67 @@ public class Wa2GameSav
 		_engine.HasReadMessage = true;
 
 		file.Close();
+	}
+	private void SaveScriptNames(FileAccess file)
+	{
+		ulong start = file.GetPosition();
+		file.StoreBuffer(Encoding.ASCII.GetBytes(ScriptNameExtensionMagic));
+		file.Store32(ScriptNameExtensionVersion);
+		Wa2Script[] scripts = _engine.ScriptStack.ToArray();
+		file.Store32((uint)Math.Max(scripts.Length, 1));
+		SaveString(file, _engine.Script.ScriptName);
+		for (int i = 1; i < scripts.Length; i++)
+		{
+			SaveString(file, scripts[i].ScriptName);
+		}
+		file.Store32((uint)(file.GetPosition() - start));
+		file.StoreBuffer(Encoding.ASCII.GetBytes(ScriptNameExtensionMagic));
+	}
+	// Empty when the save has no trailer (older saves).
+	private List<string> LoadScriptNames(FileAccess file)
+	{
+		List<string> names = new();
+		ulong length = file.GetLength();
+		if (length < 8)
+		{
+			return names;
+		}
+		file.Seek(length - 8);
+		uint trailerLength = file.Get32();
+		if (file.GetBuffer(4).GetStringFromAscii() != ScriptNameExtensionMagic || trailerLength + 8 > length)
+		{
+			return names;
+		}
+		file.Seek(length - 8 - trailerLength);
+		if (file.GetBuffer(4).GetStringFromAscii() != ScriptNameExtensionMagic || file.Get32() != ScriptNameExtensionVersion)
+		{
+			return names;
+		}
+		uint count = file.Get32();
+		if (count > MaxScriptNames)
+		{
+			return names;
+		}
+		for (uint i = 0; i < count; i++)
+		{
+			if (!LoadString(file, out string name))
+			{
+				names.Clear();
+				break;
+			}
+			names.Add(name);
+		}
+		return names;
+	}
+	// The trailer name is used only when it extends the 8-byte name stored in the fixed layout.
+	private static string FullScriptName(string saved, List<string> names, int idx)
+	{
+		if (names != null && idx < names.Count && names[idx] != null
+			&& (saved == null || names[idx].StartsWith(saved, StringComparison.OrdinalIgnoreCase)))
+		{
+			return names[idx];
+		}
+		return saved;
 	}
 	private void SaveBacklogs(FileAccess file)
 	{
@@ -797,9 +868,10 @@ public class Wa2GameSav
 			file.Store32((uint)script.Args[i].FloatValue);
 		}
 	}
-	public Wa2Script LoadScript(FileAccess file)
+	public Wa2Script LoadScript(FileAccess file, string fullName = null)
 	{
-		Wa2Script script = new(file.GetBuffer(8).GetStringFromAscii().Replace("\0", ""));
+		string saved = file.GetBuffer(8).GetStringFromAscii().Replace("\0", "");
+		Wa2Script script = new(FullScriptName(saved, [fullName], 0));
 		script.ScriptPos = file.Get32();
 		for (int i = 0; i < 26; i++)
 		{
