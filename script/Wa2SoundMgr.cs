@@ -125,7 +125,7 @@ public partial class Wa2SoundMgr : Node
 				}
 				audio.PlaySound(Wa2Resource.GetVoiceStream(label, id, chr), false, volume);
 				(audio.Stream as AudioStreamOggVorbis).Loop = loop;
-				if (channel != 0)
+				if (channel != 0 || Wa2EngineMain.EnglishPatch)
 				{
 					_engine.SubtitleMgr.ListenVoice(label, id, audio);
 					// audio.Playing = false;

@@ -95,6 +95,12 @@ public partial class Wa2EngineMain : Control
 		"VOICE.PAK",
 		"SE.PAK"
 	};
+	// English patch: when en.pak is present, load the original script.pak in place of
+	// ck-gal.pak and en.pak last, so its scripts, UI images and fonts override the JP ones.
+	public static bool EnglishPatch;
+	private static string[] PakPaths => EnglishPatch
+		? [.. RequiredPakPaths.Select(p => p == "ck-gal.pak" ? "script.pak" : p), "en.pak"]
+		: RequiredPakPaths;
 	private static readonly string[] ExpectedMoviePaths =
 	{
 		"movie/mv000.ogv",
@@ -559,10 +565,11 @@ public partial class Wa2EngineMain : Control
 		Wa2Encoding = new();
 				Wa2Def.LoadFontMap();
 
+		EnglishPatch = FileAccess.FileExists(Wa2Resource.ResPath + "en.pak");
 		bool loadPaks = true;
 		if (OS.GetName() == "iOS")
 		{
-			List<string> missingPaks = RequiredPakPaths
+			List<string> missingPaks = PakPaths
 				.Where(path => !FileAccess.FileExists(Wa2Resource.ResPath + path))
 				.ToList();
 			ResourcesReady = missingPaks.Count == 0;
@@ -585,11 +592,13 @@ public partial class Wa2EngineMain : Control
 
 		if (loadPaks)
 		{
-			foreach (string pakPath in RequiredPakPaths)
+			foreach (string pakPath in PakPaths)
 			{
 				Wa2Resource.LoadPak(pakPath);
 			}
 		}
+		if (EnglishPatch)
+			SubtitleMgr.InitEnglish(Wa2Resource.ResPath);
 		UiMgr.TitleMenu.SetResourcesReady(ResourcesReady);
 		// VideoPlayer.Finished += OnVideoFinished;
 		AdvMain.Init(this);
@@ -955,7 +964,7 @@ public void ClickAdv(bool click = false)
 	}
 	public bool CanSkip()
 	{
-		return (SkipMode || Skipping) && (HasReadMessage || (int)Prefs.GetConfig("msg_cut_optin") == 1) && !SkipDisable;
+		return (SkipMode || Skipping) && (HasReadMessage || (int)Prefs.GetConfig("msg_cut_optin") == 1 || Wa2UiMgr.DevSkipTo > 0) && !SkipDisable;
 	}
 	public void AutoModeStart()
 	{

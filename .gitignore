@@ -41,3 +41,6 @@ __pycache__/
 
 # 本地构建/发布产物（IPA、发布说明等，非仓库内容）
 _dist/
+
+# Player game files linked in for desktop runs (tools/link-desktop-res.sh); never commit
+/assets/todokanai

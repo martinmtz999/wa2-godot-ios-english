@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 using System;
 using System.Collections.Generic;
@@ -115,8 +116,23 @@ public partial class Wa2UiMgr : Control
 		UIConfirm.Open(text1, text2, confirm, action);
 
 	}
+	// Developer options: `godot --path . -- --start=1002 [--skip-to=100]` skips the title once,
+	// starts that script, and optionally fast-forwards until that message index.
+	private static string _devStartScript = OS.GetCmdlineUserArgs()
+		.FirstOrDefault(a => a.StartsWith("--start="))?["--start=".Length..];
+	public static int DevSkipTo = int.TryParse(OS.GetCmdlineUserArgs()
+		.FirstOrDefault(a => a.StartsWith("--skip-to="))?["--skip-to=".Length..], out int n) ? n : 0;
 	public void OpenTitleMenu()
 	{
+		if (_devStartScript != null)
+		{
+			string name = _devStartScript;
+			_devStartScript = null;
+			_engine.StartScript(name);
+			OpenGame();
+			_engine.SkipMode = DevSkipTo > 0;
+			return;
+		}
 		_engine.State = Wa2EngineMain.GameState.TITLE;
 		// _engine.ReplayMode = 0;
 		_engine.ScriptStack.Clear();

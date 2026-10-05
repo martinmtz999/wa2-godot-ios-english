@@ -104,6 +104,12 @@ public partial class Wa2AdvMain : Control
 		_engine = e;
 		Visible = false;
 		WaitSprite.Hide();
+		// Measured against the PC English patch: names are 1px wider-spaced and 3px higher.
+		if (Wa2EngineMain.EnglishPatch)
+		{
+			NameLabel.LineSpacing = 1;
+			NameLabel.Position = new Vector2(278, 521);
+		}
 		Modulate = new Color(1, 1, 1, 0);
 		LoadButton.ButtonDown += OnLoadButtonDown;
 		SaveButton.ButtonDown += OnSaveButtonDown;

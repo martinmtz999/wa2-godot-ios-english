@@ -175,7 +175,12 @@ public class Wa2Func
 	}
 	public bool SetMessageE(List<Wa2Var> args)
 	{
-		SetMessageEx(args[0].GetString(), args[1].GetInt(), args[2].GetInt(), 2);
+		// 0x83 always takes (text, message index, new page). The English patch chains 0x83 calls
+		// without a statement end (calc 30) in between, so the previous call's arguments are still
+		// in the list: use the newest three and consume them, as the PC engine does.
+		int n = args.Count;
+		SetMessageEx(args[n - 3].GetString(), args[n - 2].GetInt(), args[n - 1].GetInt(), 2);
+		args.RemoveRange(n - 3, 3);
 		return false;
 	}
 	public void SetMessageEx(string text, int idx, int v3, int v4)
@@ -199,6 +204,13 @@ public class Wa2Func
 		_engine.AdvMain.TextProgress = 0;
 		_engine.AdvMain.ParseMode = v4;
 		_engine.CurMessageIdx = idx;
+		if (Wa2UiMgr.DevSkipTo > 0)
+		{
+			_engine.SkipMode = idx < Wa2UiMgr.DevSkipTo;
+			if (!_engine.SkipMode)
+				Wa2UiMgr.DevSkipTo = 0;
+		}
+		_engine.SubtitleMgr.English?.CheckForCutoff();
 		_engine.AdvMain.ShowText();
 		if (_engine.Backlogs.Count <= 0)
 		{

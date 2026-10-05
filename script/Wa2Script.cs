@@ -307,6 +307,12 @@ public class Wa2Script
 		// }
 
 		Texts = [.. strs.Split(',')];
+		// The English patch writes commas as '~' because ',' separates strings.
+		if (Wa2EngineMain.EnglishPatch)
+		{
+			for (int i = 0; i < Texts.Count; i++)
+				Texts[i] = Texts[i].Replace('~', ',');
+		}
 	}
 	public bool ParseJumpFlag()
 	{

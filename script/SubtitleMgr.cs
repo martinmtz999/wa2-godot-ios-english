@@ -31,6 +31,7 @@ public partial class SubtitleMgr : Node
   public List<SoundSubtitle> SoundSubtitleList = new();
   public List<VoiceSubtitle> VoiceSubtitleList = new();
   public Wa2Audio ListenAudio;
+  public TodokanaiSubtitles English;
   public List<ContentSegment> ListenContent;
   [Export]
   public Label TextLabel;
@@ -114,8 +115,23 @@ public partial class SubtitleMgr : Node
     }
     return result;
   }
+  // English patch: the Todokanai subtitles from `todokanai/` in the resource folder replace sub.yaml
+  // (Chinese, from Moegirlpedia / CK-GAL).
+  public void InitEnglish(string resPath)
+  {
+    var layer = new CanvasLayer { Layer = 100 };
+    AddChild(layer);
+    English = new TodokanaiSubtitles();
+    layer.AddChild(English);
+    English.Load(ProjectSettings.GlobalizePath(resPath).PathJoin("todokanai"));
+  }
   public void ListenVoice(int scene, int id, Wa2Audio audio)
   {
+    if (Wa2EngineMain.EnglishPatch)
+    {
+      English?.OnVoice(id);
+      return;
+    }
     for (int i = 0; i < VoiceSubtitleList.Count; i++)
     {
       if (VoiceSubtitleList[i].Id == id && VoiceSubtitleList[i].Scene == scene)
@@ -134,6 +150,11 @@ public partial class SubtitleMgr : Node
   }
   public void ListenSe(int id, Wa2Audio audio)
   {
+    if (Wa2EngineMain.EnglishPatch)
+    {
+      English?.OnSoundEffect(id);
+      return;
+    }
     for (int i = 0; i < SoundSubtitleList.Count; i++)
     {
       if (SoundSubtitleList[i].Id == id)

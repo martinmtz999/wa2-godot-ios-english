@@ -402,7 +402,7 @@ public partial class Wa2Label : Node2D
 							lastDrawX = drawX;
 							if (drawX > 0)
 							{
-								drawY += FontSize + ParagraphSpacing;
+								drawY += LinePitch;
 								drawX = 0;
 							}
 
@@ -440,6 +440,13 @@ public partial class Wa2Label : Node2D
 				case '~':
 					break;
 				default:
+					int advance = modFontSize + LineSpacing;
+					int wrapAt = (MaxChars - 1) * (FontSize + LineSpacing);
+					if (IsHalfWidth(Text[i]))
+					{
+						advance = modFontSize / 2 + LineSpacing;
+						wrapAt = MaxChars * (FontSize + LineSpacing) - advance;
+					}
 					if (curSegment >= Segment)
 					{
 						curprogress += Speed / 10;
@@ -455,14 +462,14 @@ public partial class Wa2Label : Node2D
 						_renderDatas.Add(new CharRenderData(Text[i], drawX, drawY, modFontSize, 16));
 					}
 					lastDrawX = drawX;
-					if (drawX >= ((MaxChars - 1) * (FontSize + LineSpacing)))
+					if (drawX >= wrapAt)
 					{
-						drawY += FontSize + ParagraphSpacing;
+						drawY += LinePitch;
 						drawX = 0;
 					}
 					else
 					{
-						drawX += modFontSize + LineSpacing;
+						drawX += advance;
 					}
 					break;
 			}
@@ -475,14 +482,40 @@ public partial class Wa2Label : Node2D
 		}
 		else
 		{
-			r.EndPosition = new Vector2(lastDrawX + FontSize, drawY - FontSize - ParagraphSpacing);
+			r.EndPosition = new Vector2(lastDrawX + FontSize, drawY - LinePitch);
 
 		}
 
+		// The PC English patch places the click-wait icon 3px right and 9px up from here.
+		if (Wa2EngineMain.EnglishPatch)
+			r.EndPosition += new Vector2(3, -9);
 		r.ParseEnd = curprogress <= (progress - 16);
 		QueueRedraw();
 		return r;
 	}
+	// English patch, matched against the PC game (research/02-english-text.md): single-byte
+	// (ASCII) characters are half-width, 14px at size 28; lines are 1px further apart.
+	private static bool IsHalfWidth(char ch) => Wa2EngineMain.EnglishPatch && ch < 0x80;
+	private int LinePitch => FontSize + ParagraphSpacing + (Wa2EngineMain.EnglishPatch ? 1 : 0);
+
+	// en.pak redrew atlas rows 0-3 (ASCII, punctuation, '…') and left their shadow-atlas cells
+	// empty; rows 4+ are the original Japanese glyphs. The PC draws those English cells whole at
+	// 34px (size 28), offset (-3,-10), with a solid gray copy 2px down-right as the shadow. We use
+	// 1px: the user preferred the lighter look over an exact match.
+	private const int EnglishAtlasRows = 4;
+	private void DrawEnglishCell(CharRenderData r, int cellX, int cellY)
+	{
+		float k = r.Size / 28f;
+		Rect2 src = new(new Vector2(cellX, cellY) * Rect1Size, new Vector2(Rect1Size, Rect1Size));
+		Rect2 dst = new(new Vector2(r.X - 3 * k, r.Y - 10 * k), new Vector2(34 * k, 34 * k));
+		if (Shadow)
+		{
+			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * k, dst.Size);
+			DrawTextureRectRegion(FontTexture, shadow, src, new Color(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha));
+		}
+		DrawTextureRectRegion(FontTexture, dst, src, new Color(Color.R, Color.G, Color.B, r.Alpha));
+	}
+
 	public int ParseDecimalDigits(string input, ref int index)
 	{
 		int result = 0;
@@ -524,6 +557,11 @@ public partial class Wa2Label : Node2D
 
 			int x = pos % 80;
 			int y = pos / 80;
+			if (Wa2EngineMain.EnglishPatch && y < EnglishAtlasRows)
+			{
+				DrawEnglishCell(r, x, y);
+				return;
+			}
 			Rect2 rect = new(new Vector2(r.X, r.Y), new Vector2(r.Size, r.Size));
 			Rect2 rect2 = new(new Vector2(r.X - r.Size / 28f * 2, r.Y - r.Size / 28f * 2), new Vector2(r.Size / 28f * 32, r.Size / 28f * 32));
 			Rect2 srcRect = new(new Vector2(x, y) * Rect1Size + new Vector2(4, 4), new Vector2(28, 28));
