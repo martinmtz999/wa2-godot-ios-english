@@ -45,6 +45,9 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v7
 
+      - name: Record build commit (checked against wa2-data.pck at startup)
+        run: git rev-parse --short=12 HEAD > build_commit.txt
+
       - name: 输出工具链版本
         # iOS 链接失败时先看这里：Godot 模板引用的符号来自「SDK 版本」，不是部署目标
         run: |

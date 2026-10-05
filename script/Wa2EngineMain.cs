@@ -586,6 +586,16 @@ public partial class Wa2EngineMain : Control
 			{
 				ValidateIosMovies();
 			}
+			if (Wa2DataPack.State == Wa2DataPack.PackState.Missing || Wa2DataPack.State == Wa2DataPack.PackState.Failed)
+			{
+				OpenErrorMessage(Tr("游戏数据包 wa2-data.pck 缺失或无法读取", Wa2DataPack.State == Wa2DataPack.PackState.Missing
+					? "wa2-data.pck is missing from Wa2Res.\nCopy it with the .pak files."
+					: "wa2-data.pck could not be read.\nCopy it to Wa2Res again."));
+			}
+			else if (Wa2DataPack.CommitMismatch)
+			{
+				OpenErrorMessage(Tr("wa2-data.pck 与应用版本不一致", $"wa2-data.pck ({Wa2DataPack.DataCommit}) is from a different\nbuild than the app ({Wa2DataPack.AppCommit}). Copy the matching one."));
+			}
 		}
 		else if (!System.IO.Directory.Exists(ProjectSettings.GlobalizePath(Wa2Resource.ResPath)))
 		{
