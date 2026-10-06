@@ -77,6 +77,16 @@ public partial class Wa2Label : Node2D
 	// iOS 适配：字体图集（本体80.png）是上游未提交的本地资产，仓库内仅有源 TTF。
 	// 图集缺失时回退到 TTF 渲染，避免 DrawChar 因空图集而无效/崩溃，且无需外部素材。
 	private static FontFile _ttfFont;
+	// English text from a vector font (Fira Mono Medium, OFL, fonts_en/) instead of the 40px bitmap
+	// atlas, so it stays sharp when the 1280x720 game is shown at phone resolution. Sized to the PC
+	// glyphs' cap height, which makes its natural advance exactly the PC's 14px at size 28.
+	// `--text-font=bitmap` draws the PC atlas instead (for comparisons).
+	private static FontFile _enFont;
+	private static readonly bool UseVectorText = !OS.GetCmdlineUserArgs().Contains("--text-font=bitmap");
+	// Dark rim like the PC atlas glyphs have (keeps text readable over bright CGs); `--text-outline=N`.
+	private static readonly float TextOutline = float.TryParse(OS.GetCmdlineUserArgs()
+		.FirstOrDefault(a => a.StartsWith("--text-outline="))?["--text-outline=".Length..],
+		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float o) ? o : 3f;
 	public override void _Ready()
 	{
 		if (Wa2EngineMain.Engine.Lang == Wa2EngineMain.Language.JP)
@@ -528,6 +538,32 @@ public partial class Wa2Label : Node2D
 		DrawTextureRectRegion(FontTexture, dst, src, new Color(Color.R, Color.G, Color.B, r.Alpha));
 	}
 
+	private void DrawEnglishVector(CharRenderData r)
+	{
+		float k = r.Size / 28f;
+		int size = Mathf.RoundToInt(r.Size * 0.78f);   // cap height of the PC glyphs without their soft edge
+		float baseline = r.Y + 16 * k;                       // atlas baseline: row 30.5 of the 40px cell at 34px, from y-10
+		Color fg = new(Color.R, Color.G, Color.B, r.Alpha);
+		Color sh = new(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha);
+		void Glyph(string ch, float centerX)
+		{
+			float w = _enFont.GetStringSize(ch, HorizontalAlignment.Left, -1, size).X;
+			var pos = new Vector2(centerX - w / 2, baseline);
+			if (Shadow) DrawString(_enFont, pos + new Vector2(1, 1) * k, ch, HorizontalAlignment.Left, -1, size, sh);
+			int ol = Mathf.RoundToInt(TextOutline * k);
+			if (ol > 0) DrawStringOutline(_enFont, pos, ch, HorizontalAlignment.Left, -1, size, ol, new Color(0.16f, 0.16f, 0.16f, 0.85f * r.Alpha));
+			DrawString(_enFont, pos, ch, HorizontalAlignment.Left, -1, size, fg);
+		}
+		if (r.Chr == '\u2026')
+		{
+			// PC '…' spans the full-width cell with dots 9px apart (x+7, +16, +25 at size 28).
+			foreach (float dx in new[] { 7f, 16f, 25f }) Glyph(".", r.X + dx * k);
+			return;
+		}
+		float advance = r.Chr < 0x80 ? 14 * k : 28 * k;
+		Glyph(r.Chr.ToString(), r.X + advance / 2);
+	}
+
 	public int ParseDecimalDigits(string input, ref int index)
 	{
 		int result = 0;
@@ -571,6 +607,10 @@ public partial class Wa2Label : Node2D
 			int y = pos / 80;
 			if (Wa2EngineMain.EnglishPatch && y < EnglishAtlasRows)
 			{
+				// Loaded here, not at init: EnglishPatch is only known after the paks are found.
+				if (UseVectorText && _enFont == null)
+					_enFont = ResourceLoader.Load<FontFile>("res://fonts_en/FiraMono-Medium.ttf");
+				if (_enFont != null) { DrawEnglishVector(r); return; }
 				DrawEnglishCell(r, x, y);
 				return;
 			}
