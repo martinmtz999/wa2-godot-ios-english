@@ -125,6 +125,7 @@ public partial class Wa2Label : Node2D
 		int drawX = 0;
 		int drawY = 0;
 		int lastDrawX = 0;
+		bool endedWithBreak = false;
 		TextParseResult r = new();
 		// int drawX = 0;
 		// int drawY = 0;
@@ -400,6 +401,7 @@ public partial class Wa2Label : Node2D
 							break;
 						case 'n':
 							lastDrawX = drawX;
+							endedWithBreak = true;
 							if (drawX > 0)
 							{
 								drawY += LinePitch;
@@ -462,6 +464,7 @@ public partial class Wa2Label : Node2D
 						_renderDatas.Add(new CharRenderData(Text[i], drawX, drawY, modFontSize, 16));
 					}
 					lastDrawX = drawX;
+					endedWithBreak = false;
 					if (drawX >= wrapAt)
 					{
 						drawY += LinePitch;
@@ -482,7 +485,10 @@ public partial class Wa2Label : Node2D
 		}
 		else
 		{
-			r.EndPosition = new Vector2(lastDrawX + FontSize, drawY - LinePitch);
+			// After an explicit line break the PC puts the icon right after the last character
+			// (measured: 28px further left than lastDrawX + FontSize, 1001 line 2).
+			int gap = Wa2EngineMain.EnglishPatch && endedWithBreak ? 0 : FontSize;
+			r.EndPosition = new Vector2(lastDrawX + gap, drawY - LinePitch);
 
 		}
 
@@ -508,6 +514,12 @@ public partial class Wa2Label : Node2D
 		float k = r.Size / 28f;
 		Rect2 src = new(new Vector2(cellX, cellY) * Rect1Size, new Vector2(Rect1Size, Rect1Size));
 		Rect2 dst = new(new Vector2(r.X - 3 * k, r.Y - 10 * k), new Vector2(34 * k, 34 * k));
+		// '…' is stretched to 40px wide at the usual 34px height, offset x -4: measured from the PC's
+		// dots (9px apart as in the atlas, same size and height as other English glyphs; at 34x34
+		// they were 7.6 apart, at 40x40 too big and 2-3px low). Other full-width characters in rows
+		// 0-3 are not measured yet and keep the 34px rule.
+		if (r.Chr == '\u2026')
+			dst = new(new Vector2(r.X - 4 * k, r.Y - 10 * k), new Vector2(40 * k, 34 * k));
 		if (Shadow)
 		{
 			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * k, dst.Size);

@@ -1806,9 +1806,9 @@ color = Color(0, 0, 0, 1)
 custom_minimum_size = Vector2(1248, 208)
 anchors_preset = 0
 offset_left = 16.0
-offset_top = 505.0
+offset_top = 496.0
 offset_right = 1264.0
-offset_bottom = 713.0
+offset_bottom = 704.0
 mouse_filter = 2
 
 [node name="Window" type="TextureRect" parent="MessageBox"]
