@@ -533,6 +533,8 @@ public partial class Wa2EngineMain : Control
 			Wa2Resource.ResPath = resourceRoot + "/";
 			SavPath = savePath + "/";
 			BootLog("Ready:ios dirs ResPath=" + Wa2Resource.ResPath);
+			Wa2Feel.ExcludeFromBackup(resourceRoot);
+			Wa2Feel.ExcludeFromBackup(OS.GetUserDataDir().PathJoin("shader_cache"));
 		}
 		else
 		{
@@ -1164,6 +1166,10 @@ public void ClickAdv(bool click = false)
 	// A click or tap on the game screen (was inline in _GuiInput for the left mouse button).
 	private void Tap()
 	{
+		// Only the story screen takes taps: menus and dialogs on top must not advance it underneath.
+		var top = UiMgr.UiQueue.Count > 0 ? UiMgr.UiQueue.Peek() : null;
+		if (top != UiMgr.AdvMain && top != UiMgr.UICalender)
+			return;
 		bool flag = true;
 		IsClick = true;
 		if (SkipMode && AdvMain.Visible)

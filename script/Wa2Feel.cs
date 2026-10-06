@@ -50,6 +50,38 @@ public static class Wa2Feel
 		if (OS.GetName() == "iOS") Input.VibrateHandheld(h.ms, h.amp);
 	}
 
+	// iCloud/iTunes backup: exclude the 9+ GB of game files (and the shader cache) so only saves are
+	// backed up. NSURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey on the folder,
+	// read back and written to boot.log. Any failure only logs.
+	[DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] private static extern IntPtr MsgSendStr(IntPtr r, IntPtr s, [MarshalAs(UnmanagedType.LPUTF8Str)] string a);
+	[DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] private static extern IntPtr MsgSendPtrByte(IntPtr r, IntPtr s, IntPtr a, byte b);
+	[DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] private static extern IntPtr MsgSendByte(IntPtr r, IntPtr s, byte b);
+	[DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendSet(IntPtr r, IntPtr s, IntPtr val, IntPtr key, IntPtr err);
+	[DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendGet(IntPtr r, IntPtr s, out IntPtr val, IntPtr key, IntPtr err);
+	[DllImport("/usr/lib/libSystem.B.dylib")] private static extern IntPtr dlsym(IntPtr handle, string symbol);
+
+	public static void ExcludeFromBackup(string path)
+	{
+		if (OS.GetName() != "iOS") return;
+		var e = Wa2EngineMain.Engine;
+		try
+		{
+			IntPtr nsstr = objc_getClass("NSString"), sel = sel_registerName("stringWithUTF8String:");
+			IntPtr keyPtr = dlsym(new IntPtr(-2), "NSURLIsExcludedFromBackupKey");
+			IntPtr key = keyPtr != IntPtr.Zero ? Marshal.ReadIntPtr(keyPtr) : MsgSendStr(nsstr, sel, "NSURLIsExcludedFromBackupKey");
+			IntPtr url = MsgSendPtrByte(objc_getClass("NSURL"), sel_registerName("fileURLWithPath:isDirectory:"), MsgSendStr(nsstr, sel, path), 1);
+			IntPtr yes = MsgSendByte(objc_getClass("NSNumber"), sel_registerName("numberWithBool:"), 1);
+			byte ok = MsgSendSet(url, sel_registerName("setResourceValue:forKey:error:"), yes, key, IntPtr.Zero);
+			MsgSendGet(url, sel_registerName("getResourceValue:forKey:error:"), out IntPtr val, key, IntPtr.Zero);
+			bool now = val != IntPtr.Zero && MsgSendBool(val, sel_registerName("boolValue")) != 0;
+			e?.BootLog($"Backup exclusion {path}: set={ok} now={now} (key via {(keyPtr != IntPtr.Zero ? "dlsym" : "literal")})");
+		}
+		catch (Exception ex)
+		{
+			e?.BootLog($"Backup exclusion {path} failed: {ex.Message}");
+		}
+	}
+
 	// Low Power Mode: Godot has no power API, so ask iOS directly (NSProcessInfo
 	// isLowPowerModeEnabled) through the Objective-C runtime. Any failure disables the check.
 	[DllImport("/usr/lib/libobjc.A.dylib")] private static extern IntPtr objc_getClass(string name);

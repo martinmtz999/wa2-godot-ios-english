@@ -67,16 +67,29 @@ public partial class Wa2UiMgr : Control
 			_engine.OpenErrorMessage(Wa2EngineMain.Tr("进入游戏失败:\n", "Could not enter the game:\n") + e.Message);
 		}
 	}
+	// Menus opened over the story hide the dialogue box (as the backlog already did) and restore it
+	// on close, but only if it was showing: a box the player hid stays hidden.
+	private readonly System.Collections.Generic.HashSet<Control> _hidAdv = new();
+	private void HideAdvFor(Control page)
+	{
+		if (_engine.State == Wa2EngineMain.GameState.GAME && AdvMain.Visible)
+		{
+			AdvMain.Hide();
+			_hidAdv.Add(page);
+		}
+	}
 	public void ReturnScene()
 	{
 		if (UiQueue.Count > 0)
 		{
 			Control ui = UiQueue.Pop();
 			ui.Hide();
+			if (_hidAdv.Remove(ui)) AdvMain.Show();
 		}
 	}
 	public void OpenOptionsMenu()
 	{
+		HideAdvFor(OptionsMenu);
 		OptionsMenu.Open();
 		UiQueue.Push(OptionsMenu);
 	}
@@ -87,6 +100,7 @@ public partial class Wa2UiMgr : Control
 	}
 	public void OpenSaveMenu()
 	{
+		HideAdvFor(LoadSaveMenu);
 		LoadSaveMenu.Open(DataMode.Save);
 		UiQueue.Push(LoadSaveMenu);
 	}
@@ -107,6 +121,7 @@ public partial class Wa2UiMgr : Control
 	}
 	public void OpenLoadMenu()
 	{
+		HideAdvFor(LoadSaveMenu);
 		LoadSaveMenu.Open(DataMode.Load);
 		UiQueue.Push(LoadSaveMenu);
 	}

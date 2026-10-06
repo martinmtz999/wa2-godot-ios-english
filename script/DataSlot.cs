@@ -21,6 +21,11 @@ public partial class DataSlot : Wa2Button
   public TextureRect Month;
   [Export]
   public Wa2Label FirstSentenceLabel;
+  public override void _Ready()
+  {
+    base._Ready();
+    foreach (var l in new[] { IdxLabel, DateLabel, DayLabel }) Wa2NumberFont.Apply(l);
+  }
   public void Update(int idx)
   {
     IdxLabel.Text = string.Format("{0:D2}", idx + 1);

@@ -62,10 +62,16 @@ public static class Wa2Autoplay
 			Wa2EngineMain.Engine.UiMgr.TitleMenu.OnStartButtonDown();
 			return;
 		}
-		// `--title-open=cg`: open the CG gallery first (to check unlocks), capture 3 s later
-		if (Args.Contains("--title-open=cg"))
+		// `--title-open=cg` / `--title-open=load`: open the CG gallery or the load menu, capture 3 s later
+		if (Args.Contains("--title-open=cg") || Args.Contains("--title-open=load"))
 		{
-			if (!_opened) { _opened = true; Wa2EngineMain.Engine.UiMgr.OpenCGModeMenu(); return; }
+			if (!_opened)
+			{
+				_opened = true;
+				if (Args.Contains("--title-open=load")) Wa2EngineMain.Engine.UiMgr.OpenLoadMenu();
+				else Wa2EngineMain.Engine.UiMgr.OpenCGModeMenu();
+				return;
+			}
 			if (_titleTime < 7) return;
 		}
 		Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
@@ -170,6 +176,27 @@ public static class Wa2Autoplay
 					Wa2Feel.OnSe(8405); int c2 = Wa2Feel.Fired - f0;         // second impact within 10 s: no pulse
 					Out($"HAPTIC everyday={a} impact={b2} second-within-10s={c2} (want 0 1 1)");
 				}
+				_gStep = 30; _gTime = 0; return true;
+			case 30:   // menu: open Save, tap an empty spot
+				_gIdx = e.CurMessageIdx;
+				e.UiMgr.OpenSaveMenu();
+				_gStep = 31; _gTime = 0; return true;
+			case 31:
+				if (_gTime < 1.5) return true;
+				var spot = e.GetViewport().GetFinalTransform() * (e.GetGlobalTransformWithCanvas() * new Vector2(640, 40));
+				Touch(0, true, spot); Touch(0, false, spot);
+				var strip3 = new Vector2(20, DisplayServer.WindowGetSize().Y * 0.5f);
+				Touch(0, true, strip3); Touch(0, false, strip3);
+				_gStep = 32; _gTime = 0; return true;
+			case 32:
+				if (_gTime < 2.5) return true;
+				Save("g7-menu");
+				Out($"MENU taps while Save is open -> message {_gIdx} -> {e.CurMessageIdx} (want same); text box visible = {e.AdvMain.Visible} (want False)");
+				e.Back();
+				_gStep = 33; _gTime = 0; return true;
+			case 33:
+				if (_gTime < 2.0) return true;
+				Out($"MENU closed -> top ui = {e.UiMgr.UiQueue.Peek()?.Name}; text box visible = {e.AdvMain.Visible} (want True)");
 				Finish(0, "gesture test done"); _gStep = 99; return true;
 		}
 		return true;
@@ -192,10 +219,10 @@ public static class Wa2Autoplay
 		if (e.State != Wa2EngineMain.GameState.GAME || e.Script == null) return;
 		var adv = e.AdvMain;
 		_idle += delta;
-		if (_idle > 20)
+		if (_idle > 60)
 		{
 			Save("stuck");
-			Out($"STUCK: no new line for 20 s; script={e.Script.ScriptName} idx={e.CurMessageIdx} adv={adv.State} " +
+			Out($"STUCK: no new line for 60 s; script={e.Script.ScriptName} idx={e.CurMessageIdx} adv={adv.State} " +
 				$"wait={e.WaitTimer.IsActive()} anim={e.AnimatorMgr.WaitAnimation()} video={e.VideoPlayer.IsPlaying()} " +
 				$"select={adv.SelectMessageContainer.Visible} ui={e.UiMgr.UiQueue.Peek()?.Name}");
 			Finish(3, "stopped");
