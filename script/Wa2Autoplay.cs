@@ -49,10 +49,61 @@ public static class Wa2Autoplay
 		Wa2EngineMain.Engine.GetTree().Quit(0);
 	}
 
+	// `--gesture-test`: after 3 lines, inject touch gestures (as the phone would send them) and log
+	// what happened: swipe down -> backlog, two-finger tap -> text box hidden, tap -> shown, tap -> next line.
+	static readonly bool GestureTest = Args.Contains("--gesture-test");
+	static int _gStep = -1; static double _gTime;
+	static void Touch(int index, bool down, Vector2 pos) =>
+		Input.ParseInputEvent(new InputEventScreenTouch { Index = index, Pressed = down, Position = pos });
+	static void Drag(Vector2 pos) => Input.ParseInputEvent(new InputEventScreenDrag { Index = 0, Position = pos });
+	static bool GestureTick(double delta, Wa2EngineMain e)
+	{
+		if (!GestureTest || _done < 3) return false;
+		if (_gStep < 0) { _gStep = 0; _gTime = 0; }
+		_gTime += delta;
+		var top = e.UiMgr.UiQueue.Peek()?.Name.ToString();
+		switch (_gStep)
+		{
+			case 0:   // swipe down
+				Touch(0, true, new Vector2(640, 250));
+				for (int y = 270; y <= 430; y += 40) Drag(new Vector2(645, y));
+				Touch(0, false, new Vector2(645, 430));
+				_gStep = 1; _gTime = 0; return true;
+			case 1:
+				if (_gTime < 1.5) return true;
+				Save("g1-swipe-down"); Out($"GESTURE swipe down -> top ui = {top} (want BackLog)");
+				e.Back(); _gStep = 2; _gTime = 0; return true;
+			case 2:
+				if (_gTime < 1.5) return true;
+				Out($"GESTURE back -> top ui = {e.UiMgr.UiQueue.Peek()?.Name}");
+				Touch(0, true, new Vector2(500, 300)); Touch(1, true, new Vector2(760, 300));
+				Touch(1, false, new Vector2(760, 300)); Touch(0, false, new Vector2(500, 300));
+				_gStep = 3; _gTime = 0; return true;
+			case 3:
+				if (_gTime < 1.0) return true;
+				Save("g2-two-finger"); Out($"GESTURE two-finger tap -> text box visible = {e.AdvMain.Visible} (want False)");
+				Touch(0, true, new Vector2(640, 300)); Touch(0, false, new Vector2(640, 300));
+				_gStep = 4; _gTime = 0; return true;
+			case 4:
+				if (_gTime < 1.0) return true;
+				Save("g3-tap-show"); Out($"GESTURE tap -> text box visible = {e.AdvMain.Visible} (want True)");
+				_gIdx = e.CurMessageIdx;
+				Touch(0, true, new Vector2(640, 300)); Touch(0, false, new Vector2(640, 300));
+				_gStep = 5; _gTime = 0; return true;
+			case 5:
+				if (_gTime < 2.5) return true;
+				Out($"GESTURE tap -> message {_gIdx} -> {e.CurMessageIdx} (want it to advance)");
+				Finish(0, "gesture test done"); _gStep = 6; return true;
+		}
+		return true;
+	}
+	static int _gIdx;
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;
 		var e = Wa2EngineMain.Engine;
+		if (GestureTick(delta, e)) return;
 		if (e.State != Wa2EngineMain.GameState.GAME || e.Script == null) return;
 		var adv = e.AdvMain;
 		_idle += delta;
@@ -82,7 +133,8 @@ public static class Wa2Autoplay
 			_done++;
 			Out($"{k} saved");
 			_settled = 0; _idle = 0; _nudge = 0;
-			if (_done >= Lines) { Finish(0, "done"); return; }
+			if (_done >= Lines && !GestureTest) { Finish(0, "done"); return; }
+			if (GestureTest && _done >= 3) return;
 			e.ClickAdv(true);
 			return;
 		}

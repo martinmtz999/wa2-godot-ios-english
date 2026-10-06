@@ -1089,43 +1089,93 @@ public void ClickAdv(bool click = false)
 				}
 				break;
 			case GameState.GAME:
-				if (@event is InputEventScreenTouch && @event.IsPressed())
+				// Touch screens: gestures, acted on when the finger lifts (a swipe must not also
+				// advance the text). Tap = advance; swipe down = backlog (the PC's mouse wheel up);
+				// two-finger tap = hide the text box (the PC's right click); holding = long-press skip.
+				if (@event is InputEventScreenTouch st)
 				{
-					IsPressed = true;
+					if (st.Index == 0 && st.Pressed)
+					{
+						_touchStart = st.Position;
+						_touchMoved = false;
+						_twoFinger = false;
+						IsPressed = true;
+					}
+					else if (st.Index == 0)
+					{
+						bool longPress = Prefs.GetConfig("checkskip") == 1 && PressedTime >= 0.6f;
+						IsPressed = false;
+						PressedTime = 0.0;
+						OnTouchRelease(st.Position, longPress);
+					}
+					else if (st.Pressed)
+					{
+						_twoFinger = true;
+					}
+					break;
 				}
-				else
+				if (@event is InputEventScreenDrag sd)
 				{
-					IsPressed = false;
+					if (sd.Index == 0 && (sd.Position - _touchStart).Length() > 24)
+						_touchMoved = true;
+					break;
 				}
+				if (@event is InputEventMouseButton emb && emb.Device == InputEvent.DeviceIdEmulation)
+					break;   // mouse events emulated from touch: handled above
 				if (!IsPressed)
 				{
 					PressedTime = 0.0;
 				}
 				if (@event is InputEventMouseButton && (@event as InputEventMouseButton).ButtonIndex == MouseButton.Left && @event.IsPressed())
 				{
-					bool flag = true;
-					IsClick = true;
-					if (SkipMode && AdvMain.Visible)
-					{
-						StopSkip();
-						flag = false;
-					}
-					if (!AdvMain.Visible && !VideoPlayer.IsPlaying() && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && AdvMain.State == Wa2AdvMain.AdvState.HIDE)
-					{
-						AdvMain.Show();
-						AdvMain.State = Wa2AdvMain.AdvState.WAIT_CLICK;
-						flag = false;
-					}
-					if (flag)
-					{
-						ClickAdv(true);
-					}
+					Tap();
 				}
 				else
 				{
 					IsClick = false;
 				}
 				break;
+		}
+	}
+	private Vector2 _touchStart;
+	private bool _touchMoved, _twoFinger;
+	private bool AdvActive => AdvMain.Visible && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && !VideoPlayer.IsPlaying();
+	private void OnTouchRelease(Vector2 pos, bool longPress)
+	{
+		Vector2 d = pos - _touchStart;
+		if (_twoFinger)
+		{
+			if (AdvActive) AdvMain.OnOffButtonDown();
+			return;
+		}
+		if (d.Y > 80 && Mathf.Abs(d.X) < d.Y)
+		{
+			if (AdvActive && !AdvMain.SelectMessageContainer.Visible) AdvMain.OnBackLogButtonDown();
+			return;
+		}
+		if (_touchMoved || longPress)
+			return;
+		Tap();
+	}
+	// A click or tap on the game screen (was inline in _GuiInput for the left mouse button).
+	private void Tap()
+	{
+		bool flag = true;
+		IsClick = true;
+		if (SkipMode && AdvMain.Visible)
+		{
+			StopSkip();
+			flag = false;
+		}
+		if (!AdvMain.Visible && !VideoPlayer.IsPlaying() && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && AdvMain.State == Wa2AdvMain.AdvState.HIDE)
+		{
+			AdvMain.Show();
+			AdvMain.State = Wa2AdvMain.AdvState.WAIT_CLICK;
+			flag = false;
+		}
+		if (flag)
+		{
+			ClickAdv(true);
 		}
 	}
 	public void StopAutoMode()
