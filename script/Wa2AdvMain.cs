@@ -103,12 +103,13 @@ public partial class Wa2AdvMain : Control
 	}
 	// Larger dialogue for small phone screens (English mode). Scales the text, line spacing, name
 	// and the message box together about the box's bottom centre (640, 704), so the layout keeps
-	// its proportions and the text stays inside the box; the box grows upward. 1 = PC layout.
+	// its proportions and the text stays inside the box; the box grows upward. 1 = PC layout;
+	// default 1.35, chosen by the user for a 6.1" phone (2026-10-05). --text-scale=K overrides.
 	// The English lines are pre-wrapped at <= 55 half-width chars and pages hold <= 3 lines
 	// (99.97% of pages), which is what the box was sized for.
 	public static float TextScale = float.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--text-scale="))?["--text-scale=".Length..],
-		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1f;
+		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1.35f;
 	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704) + (p - new Vector2(640, 704)) * k;
 	public void ApplyTextScale()
 	{
@@ -119,8 +120,19 @@ public partial class Wa2AdvMain : Control
 		TextLabel.Position = ScaleAboutBoxBottom(new Vector2(278, 562), k);
 		NameLabel.FontSize = Mathf.RoundToInt(28 * k);
 		NameLabel.Position = ScaleAboutBoxBottom(new Vector2(278, 521), k);
+		// The box art is an oval ring (sys_00000) over a soft fill (sys_00001). Its height follows the
+		// text, but its width is capped at 1.2 so the whole oval, ends included, stays on screen
+		// (opaque part 1061px wide x 1.2 = 1273 of 1280); scaled uniformly it ran off both sides.
 		MessageBox.PivotOffset = new Vector2(624, 208);
-		MessageBox.Scale = new Vector2(k, k);
+		MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f), k);
+		// Toolbar: slightly larger for touch when the text is enlarged, about its bottom-right corner.
+		var bar = GetNodeOrNull<Control>("HBoxContainer");
+		if (bar != null)
+		{
+			float b = k > 1f ? 1.15f : 1f;
+			bar.PivotOffset = new Vector2(bar.Size.X, 48);
+			bar.Scale = new Vector2(b, b);
+		}
 	}
 	public void Init(Wa2EngineMain e)
 	{
