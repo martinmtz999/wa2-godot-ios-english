@@ -35,7 +35,7 @@ public partial class Wa2Wide : Node
 	private Vector2 _off;
 	private bool _wide, _built;
 	private const float Btn = 72f;
-	private HelpButton _help;
+	private TextureButton _help;
 	// "?" in the toolbar's style: a cyan ring with the game's own letters (Wa2Label).
 	private partial class HelpButton : Button
 	{
@@ -140,8 +140,12 @@ public partial class Wa2Wide : Node
 		Take(adv.AutoButton, 6, () => _e.AutoMode);
 		Take(adv.SkipButton, 7, () => _e.SkipMode || _e.Skipping);
 		Take(adv.OffButton, 8);
-		_help = new HelpButton { Size = new Vector2(Btn, Btn), FocusMode = Control.FocusModeEnum.None };
-		_help.Pressed += () => { Wa2Quick.Haptic(); Wa2Phone.Open(_e); };
+		// '?' built from the PC icon sheet by tools/make-help-icon.py (rows: idle, active, pressed)
+		var helpTex = GD.Load<Texture2D>("res://assets/grp/sys_help.png");
+		AtlasTexture H(int row) => new() { Atlas = helpTex, Region = new Rect2(0, row * 40, 40, 40) };
+		_help = new TextureButton { TextureNormal = H(0), TextureHover = H(0), TexturePressed = H(2), IgnoreTextureSize = true,
+			StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered, Size = new Vector2(Btn, Btn), FocusMode = Control.FocusModeEnum.None };
+		_help.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Phone.Open(_e); };
 		_rails.AddChild(_help);
 		// Quick save / quick load stay hidden: the user does not use them and they crowded the strip.
 		// Auto-save on leaving the app (Wa2Quick) needs no button.
@@ -196,6 +200,36 @@ public partial class Wa2Wide : Node
 
 	private bool _lowApplied;
 	private double _powerCheck;
+	// Auto-hide (Wa2Phone.AutoHide): buttons fade out while reading; a plain tap on a side bar shows
+	// or hides them; they fade out again after 5 s without use. Ornaments stay.
+	private float _btnAlpha = 1f;
+	private double _hideIn = 5;
+	private bool _btnShown = true;
+	public static void TapOnRail()
+	{
+		if (_inst == null) return;
+		if (!Wa2Phone.AutoHide) { _inst._e.ClickRailTap(); return; }
+		_inst._btnShown = !_inst._btnShown;
+		_inst._hideIn = 5;
+	}
+	public static void Touched() { if (_inst != null) _inst._hideIn = 5; }
+	public static bool ButtonsShown => _inst == null || _inst._btnShown;
+	public static void ShowButtons() { if (_inst != null) { _inst._btnShown = true; _inst._hideIn = 5; _inst._btnAlpha = 1; } }
+	private void UpdateButtonFade(double delta)
+	{
+		if (!Wa2Phone.AutoHide) _btnShown = true;
+		else if (_btnShown && (_hideIn -= delta) <= 0) _btnShown = false;
+		float target = _btnShown ? 1f : 0f;
+		_btnAlpha = Mathf.MoveToward(_btnAlpha, target, (float)delta / 0.25f);
+		foreach (var (btn, _, _) in _btns) SetBtn(btn);
+		if (_help != null) SetBtn(_help);
+	}
+	private void SetBtn(Control b)
+	{
+		b.Modulate = new Color(1, 1, 1, _btnAlpha);
+		b.MouseFilter = _btnAlpha > 0.5f ? Control.MouseFilterEnum.Stop : Control.MouseFilterEnum.Ignore;
+	}
+
 	public override void _Process(double delta)
 	{
 		// Low Power Mode: 30 fps and a cheap 8-tap blur in the strips; back to 60 fps / 64 taps after.
@@ -222,6 +256,7 @@ public partial class Wa2Wide : Node
 		_rails.Visible = show;
 		if (!show) return;
 		_rails.Modulate = new Color(1, 1, 1, adv.Modulate.A);
+		UpdateButtonFade(delta);
 		foreach (var (btn, col, active) in _btns)
 		{
 			int row = active != null && active() ? 1 : 0;
@@ -246,6 +281,7 @@ public partial class Wa2Wide : Node
 				case InputEventMouseButton m: m.Position += shift; break;
 				case InputEventMouseMotion mm: mm.Position += shift; break;
 			}
+			if (x is InputEventScreenTouch tt && tt.Pressed && tt.Index == 0) E.TouchFromRail = true;
 			E._GuiInput(x);
 			AcceptEvent();
 		}

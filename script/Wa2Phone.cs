@@ -12,6 +12,7 @@ public partial class Wa2Phone : Control
 	public static readonly string[] TextNames = { "Small", "Medium", "Large", "Larger" };
 	public static readonly string[] FillNames = { "Deep", "Light", "Black" };
 	public static int TextIdx = 2, FillIdx = 0;
+	public static bool AutoHide = true;
 	public static bool GuideSeen;
 	private static Wa2Phone _panel;
 	private readonly List<(Wa2Label lab, Func<bool> on)> _opts = new();
@@ -25,6 +26,7 @@ public partial class Wa2Phone : Control
 			TextIdx = Math.Clamp((int)c.GetValue("phone", "text", 2), 0, TextSizes.Length - 1);
 			FillIdx = Math.Clamp((int)c.GetValue("phone", "fill", 0), 0, FillNames.Length - 1);
 			GuideSeen = (bool)c.GetValue("phone", "guide_seen", false);
+			AutoHide = (bool)c.GetValue("phone", "autohide", true);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
 	}
@@ -34,6 +36,7 @@ public partial class Wa2Phone : Control
 		c.SetValue("phone", "text", TextIdx);
 		c.SetValue("phone", "fill", FillIdx);
 		c.SetValue("phone", "guide_seen", GuideSeen);
+		c.SetValue("phone", "autohide", AutoHide);
 		c.Save(Cfg);
 	}
 
@@ -90,8 +93,10 @@ public partial class Wa2Phone : Control
 		for (int i = 0; i < TextSizes.Length; i++) { int k = i; Option(TextNames[i], 450 + i * 150, 372, () => TextIdx == k, () => SetText(k)); }
 		Text("Side bars", 230, 432, 26, Cyan);
 		for (int i = 0; i < FillNames.Length; i++) { int k = i; Option(FillNames[i], 450 + i * 150, 432, () => FillIdx == k, () => SetFill(k)); }
-		Text("Saves: the game saves itself when you leave the app.", 230, 498, 22, Dim);
-		Text("Reopen this page with the  ?  button on the left.", 230, 532, 22, Dim);
+		Text("Buttons", 230, 492, 26, Cyan);
+		Option("Auto-hide", 450, 492, () => AutoHide, () => { AutoHide = true; Save(); });
+		Option("Always", 600, 492, () => !AutoHide, () => { AutoHide = false; Save(); });
+		Text("Auto-hide: tap a side bar to show the buttons.  Saves happen when you leave the app.", 230, 548, 20, Dim);
 		Option("Close", 590, 598, () => true, Close, 30);
 		RefreshOptions();
 	}

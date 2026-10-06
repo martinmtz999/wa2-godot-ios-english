@@ -142,11 +142,18 @@ public static class Wa2Autoplay
 				_gStep = 6; _gTime = 0; return true;
 			case 6:
 				if (_gTime < 2.5) return true;
-				Save("g4-rail-tap"); Out($"RAIL tap on the strip -> message {_gIdx} -> {e.CurMessageIdx} (want it to advance)");
+				Save("g4-rail-tap");
+				Out(Wa2Phone.AutoHide
+					? $"RAIL tap on the strip -> message {_gIdx} -> {e.CurMessageIdx} (want same); buttons shown {Wa2Wide.ButtonsShown}"
+					: $"RAIL tap on the strip -> message {_gIdx} -> {e.CurMessageIdx} (want it to advance)");
+				Wa2Wide.ShowButtons();
 				var b = e.AdvMain.BackLogButton;
-				// window pixels = viewport final transform * canvas position (buttons sit on a CanvasLayer)
 				Vector2 c = b.GetViewport().GetFinalTransform() * (b.GetGlobalTransformWithCanvas() * (b.Size / 2));
-				Touch(0, true, c); Touch(0, false, c);
+				_gPending = c;
+				_gStep = 61; _gTime = 0; return true;
+			case 61:
+				if (_gTime < 0.4) return true;
+				Touch(0, true, _gPending); Touch(0, false, _gPending);
 				_gStep = 7; _gTime = 0; return true;
 			case 7:
 				if (_gTime < 1.5) return true;
@@ -246,6 +253,7 @@ public static class Wa2Autoplay
 		return true;
 	}
 	static int _gIdx, _qsIdx;
+	static Vector2 _gPending;
 	static void Swipe(Vector2 a, Vector2 b)
 	{
 		Touch(0, true, a);
@@ -276,10 +284,10 @@ public static class Wa2Autoplay
 		if (e.State != Wa2EngineMain.GameState.GAME || e.Script == null) return;
 		var adv = e.AdvMain;
 		_idle += delta;
-		if (_idle > 60)
+		if (_idle > 180)
 		{
 			Save("stuck");
-			Out($"STUCK: no new line for 60 s; script={e.Script.ScriptName} idx={e.CurMessageIdx} adv={adv.State} " +
+			Out($"STUCK: no new line for 180 s; script={e.Script.ScriptName} idx={e.CurMessageIdx} adv={adv.State} " +
 				$"wait={e.WaitTimer.IsActive()} anim={e.AnimatorMgr.WaitAnimation()} video={e.VideoPlayer.IsPlaying()} " +
 				$"select={adv.SelectMessageContainer.Visible} ui={e.UiMgr.UiQueue.Peek()?.Name}");
 			Finish(3, "stopped");

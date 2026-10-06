@@ -1154,6 +1154,8 @@ public void ClickAdv(bool click = false)
 		}
 	}
 	private Vector2 _touchStart;
+	public bool TouchFromRail;   // set by Wa2Wide when the touch began on a side bar
+	public void ClickRailTap() => Tap();
 	private ulong _touchStartMs;
 	private bool _touchMoved, _twoFinger;
 	private bool AdvActive => AdvMain.Visible && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && !VideoPlayer.IsPlaying();
@@ -1186,6 +1188,7 @@ public void ClickAdv(bool click = false)
 			}
 			return;
 		}
+		bool fromRail = TouchFromRail; TouchFromRail = false;
 		if (_touchMoved || longPress)
 			return;
 		if (Time.GetTicksMsec() - _touchStartMs >= 600 && Prefs.GetConfig("checkskip") != 1)   // hold: Auto on/off
@@ -1193,6 +1196,7 @@ public void ClickAdv(bool click = false)
 			if (AdvActive) { AdvMain.OnAutoButtonDown(); Wa2Quick.Haptic(); }
 			return;
 		}
+		if (fromRail && AdvActive) { Wa2Wide.TapOnRail(); return; }   // a side-bar tap shows/hides the buttons
 		Tap();
 	}
 	// A click or tap on the game screen (was inline in _GuiInput for the left mouse button).
