@@ -947,7 +947,7 @@ public void ClickAdv(bool click = false)
 		}
 		else if (State == GameState.GAME)
 		{
-
+			Wa2Autoplay.Tick(delta);
 			InputKeyHandling();
 			UpdateTimer(delta);
 			UpdateFrame(delta);
