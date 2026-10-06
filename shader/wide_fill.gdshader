@@ -9,7 +9,7 @@ uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 uniform vec4 center = vec4(0.0, 0.0, 1.0, 1.0);   // game rect, normalised x, y, w, h
 uniform float aspect = 1.7778;                    // screen width / height
 uniform float dim = 0.78;
-uniform float radius = 0.06;                     // blur radius, fraction of screen height
+uniform float radius = 0.025;                    // blur radius, fraction of screen height (Wa2Wide.StripBlur)
 uniform vec3 line_color = vec3(0.55, 0.88, 1.0);
 uniform int taps = 64;                            // 12 in Low Power Mode (Wa2Wide)
 

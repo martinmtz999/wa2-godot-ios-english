@@ -11,6 +11,7 @@ using System.Collections.Generic;
 public partial class Wa2Wide : Node
 {
 	private Wa2EngineMain _e;
+	public static float StripBlur = 0.025f;   // user: "less of a blur" (first look used 0.06)
 	private CanvasLayer _fillLayer, _railLayer;
 	private ColorRect _fill;
 	private Control _rails;
@@ -62,6 +63,11 @@ public partial class Wa2Wide : Node
 			_ornaments.Add(o);
 		}
 		AddChild(_railLayer);
+		// `--strip-blur=R` overrides the blur radius (fraction of screen height) for comparisons.
+		var rb = System.Linq.Enumerable.FirstOrDefault(OS.GetCmdlineUserArgs(), a => a.StartsWith("--strip-blur="));
+		if (rb != null && float.TryParse(rb["--strip-blur=".Length..], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float r))
+			StripBlur = r;
+		((ShaderMaterial)_fill.Material).SetShaderParameter("radius", StripBlur);
 		GetViewport().SizeChanged += Layout;
 		Layout();
 	}
@@ -162,7 +168,7 @@ public partial class Wa2Wide : Node
 				_lowApplied = low;
 				Engine.MaxFps = low ? 30 : 60;
 				((ShaderMaterial)_fill.Material).SetShaderParameter("taps", low ? 12 : 64);
-				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? 0.016f : 0.06f);   // few taps need a small radius or they ghost
+				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? Mathf.Min(0.016f, StripBlur) : StripBlur);   // few taps need a small radius or they ghost
 				Wa2Trace.Log("lowpower", low ? 1 : 0);
 				GD.Print("Wa2Wide: low power " + low);
 			}
