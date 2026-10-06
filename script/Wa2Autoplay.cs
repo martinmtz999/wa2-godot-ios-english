@@ -43,6 +43,7 @@ public static class Wa2Autoplay
 	public static void TitleTick(double delta)
 	{
 		if (string.IsNullOrEmpty(TitleShot)) return;
+		if (_opened && Args.Contains("--title-open=resume")) { _titleTime += delta; goto resume; }
 		if (_opened && Args.Contains("--title-open=newgame"))
 		{
 			_titleTime += delta;
@@ -55,6 +56,16 @@ public static class Wa2Autoplay
 		if (Wa2EngineMain.Engine.State != Wa2EngineMain.GameState.TITLE) return;
 		_titleTime += delta;
 		if (_titleTime < 4) return;
+		resume:
+		if (Args.Contains("--title-open=resume"))
+		{
+			var e1 = Wa2EngineMain.Engine;
+			if (!_opened) { _opened = true; GD.Print($"autoplay: prompt shown = {e1.UiMgr.UiQueue.Peek() == e1.UiMgr.UIConfirm}"); e1.UiMgr.UIConfirm.OnConfirmBtnDown(); return; }
+			if (_titleTime < 12) return;
+			e1.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
+			GD.Print($"autoplay: resumed state={e1.State} script={e1.Script?.ScriptName} msg={e1.CurMessageIdx}");
+			e1.GetTree().Quit(0); return;
+		}
 		if (Args.Contains("--title-open=newgame") && !_opened)
 		{
 			_opened = true;
@@ -197,11 +208,50 @@ public static class Wa2Autoplay
 			case 33:
 				if (_gTime < 2.0) return true;
 				Out($"MENU closed -> top ui = {e.UiMgr.UiQueue.Peek()?.Name}; text box visible = {e.AdvMain.Visible} (want True)");
+				_gStep = 40; _gTime = 0; return true;
+			case 40:   // hold 0.8 s -> Auto on
+				Touch(0, true, new Vector2(640, 300)); _gStep = 41; _gTime = 0; return true;
+			case 41:
+				if (_gTime < 0.8) return true;
+				Touch(0, false, new Vector2(640, 300)); _gStep = 42; _gTime = 0; return true;
+			case 42:
+				if (_gTime < 0.5) return true;
+				Out($"HOLD -> auto = {e.AutoMode} (want True)");
+				Touch(0, true, new Vector2(640, 300)); _gStep = 43; _gTime = 0; return true;
+			case 43:
+				if (_gTime < 0.8) return true;
+				Touch(0, false, new Vector2(640, 300)); _gStep = 44; _gTime = 0; return true;
+			case 44:
+				if (_gTime < 0.5) return true;
+				Out($"HOLD again -> auto = {e.AutoMode} (want False)");
+				Swipe(new Vector2(400, 300), new Vector2(700, 300));
+				_gStep = 45; _gTime = 0; return true;
+			case 45:
+				Out($"SWIPE right -> skip = {e.SkipMode} kind = {e.SkipKind} (want True 1)");
+				Swipe(new Vector2(700, 300), new Vector2(400, 300));
+				_gStep = 46; _gTime = 0; return true;
+			case 46:
+				Out($"SWIPE left -> skip = {e.SkipMode} kind = {e.SkipKind} (want True 2)");
+				e.StopSkip();
+				_gStep = 47; _gTime = 0; return true;
+			case 47:
+				if (_gTime < 1.0) return true;
+				Swipe(new Vector2(640, 450), new Vector2(640, 250));
+				_gStep = 48; _gTime = 0; return true;
+			case 48:
+				if (_gTime < 0.5) return true;
+				Out($"SWIPE up -> text box visible = {e.AdvMain.Visible} (want False)");
 				Finish(0, "gesture test done"); _gStep = 99; return true;
 		}
 		return true;
 	}
 	static int _gIdx, _qsIdx;
+	static void Swipe(Vector2 a, Vector2 b)
+	{
+		Touch(0, true, a);
+		for (int i = 1; i <= 5; i++) Drag(a + (b - a) * i / 5f);
+		Touch(0, false, b);
+	}
 	static void TapNamed(Wa2EngineMain e, string name)
 	{
 		Control b = null;
@@ -215,6 +265,13 @@ public static class Wa2Autoplay
 	{
 		if (!Enabled) return;
 		var e = Wa2EngineMain.Engine;
+		if (Args.Contains("--show-panel") && _done >= 2)
+		{
+			if (!Wa2Phone.IsOpen && _gTime == 0) { Wa2Phone.Open(e); _gTime = 0.001; return; }
+			_gTime += delta;
+			if (_gTime < 1.5) return;
+			Save("panel"); Finish(0, "panel saved"); return;
+		}
 		if (GestureTick(delta, e)) return;
 		if (e.State != Wa2EngineMain.GameState.GAME || e.Script == null) return;
 		var adv = e.AdvMain;

@@ -59,6 +59,7 @@ public partial class Wa2UiMgr : Control
 			_engine.SubViewport.Show();
 			_engine.State = Wa2EngineMain.GameState.GAME;
 			JumpScene(AdvMain);
+			Callable.From(() => Wa2Phone.ShowIfFirstTime(_engine)).CallDeferred();
 			AdvMain.Hide();
 		}
 		catch (System.Exception e)

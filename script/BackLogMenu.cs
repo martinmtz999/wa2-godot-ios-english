@@ -14,17 +14,39 @@ public partial class BackLogMenu : BasePage
   // so the backlog text matches the main text. Applied on first open: EnglishPatch is only known
   // after the paks are found, which is after _Ready.
   private int _rows = 4;
-  private bool _scaled;
+  private float _appliedK = 1f;
+  private Vector4 _origBox, _origPanel; private Vector2 _origScroll, _origItem; private float _origTextY = -1;
   private void ApplyTextScale()
   {
-    if (_scaled) return;
-    _scaled = true;
-    float k = Wa2AdvMain.TextScale;
-    if (!Wa2EngineMain.EnglishPatch || k <= 1.01f) return;
+    float k = Wa2EngineMain.EnglishPatch ? Wa2AdvMain.TextScale : 1f;
+    if (Mathf.IsEqualApprox(k, _appliedK)) return;
+    var panel = GetNodeOrNull<Control>("NinePatchRect");
+    if (_origTextY < 0)
+    {
+      _origBox = new Vector4(BackLogItems.OffsetLeft, BackLogItems.OffsetTop, BackLogItems.OffsetRight, BackLogItems.OffsetBottom);
+      _origPanel = panel != null ? new Vector4(panel.OffsetLeft, 0, panel.OffsetRight, 0) : Vector4.Zero;
+      _origScroll = new Vector2(ScrollBar.OffsetLeft, ScrollBar.OffsetRight);
+      var it0 = BackLogItems.GetChild<BackLogItem>(0);
+      _origItem = it0.CustomMinimumSize; _origTextY = it0.TextLabel.Position.Y;
+    }
+    _appliedK = k;
+    if (k <= 1.01f)
+    {
+      _rows = 4;
+      BackLogItems.OffsetLeft = _origBox.X; BackLogItems.OffsetTop = _origBox.Y; BackLogItems.OffsetRight = _origBox.Z; BackLogItems.OffsetBottom = _origBox.W;
+      if (panel != null) { panel.OffsetLeft = _origPanel.X; panel.OffsetRight = _origPanel.Z; }
+      ScrollBar.OffsetLeft = _origScroll.X; ScrollBar.OffsetRight = _origScroll.Y;
+      for (int i = 0; i < BackLogItems.GetChildCount(); i++)
+      {
+        var it = BackLogItems.GetChild<BackLogItem>(i);
+        it.CustomMinimumSize = _origItem; it.NmaeLabel.FontSize = 28; it.TextLabel.FontSize = 28; it.TextLabel.ParagraphSpacing = 13;
+        it.TextLabel.Position = new Vector2(it.TextLabel.Position.X, _origTextY);
+      }
+      return;
+    }
     _rows = 3;
     float half = Mathf.Round((62 + 55 * 14 * k + 24) / 2);          // name indent + 55 half-width chars + margin
     float rowH = Mathf.Round(4 + 38 * k + 2 * (41 * k + 1) + 28 * k + 10);   // 3 rows clear the header strip
-    var panel = GetNodeOrNull<Control>("NinePatchRect");
     if (panel != null) { panel.OffsetLeft = -half; panel.OffsetRight = half; }
     BackLogItems.OffsetLeft = -half; BackLogItems.OffsetRight = half;
     BackLogItems.OffsetTop = -rowH * 1.5f; BackLogItems.OffsetBottom = rowH * 1.5f;

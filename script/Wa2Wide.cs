@@ -11,6 +11,20 @@ using System.Collections.Generic;
 public partial class Wa2Wide : Node
 {
 	private Wa2EngineMain _e;
+	private static Wa2Wide _inst;
+	// Side-bar styles (Wa2Phone): Deep hides the most of the game (strong blur, dark, fading to near
+	// black at the screen edge); Light is the earlier look; Black is plain black with the cyan edge.
+	public static void ApplyFill()
+	{
+		if (_inst?._fill == null) return;
+		var sm = (ShaderMaterial)_inst._fill.Material;
+		(float r, float dim, float outer) = Wa2Phone.FillIdx switch { 1 => (0.025f, 0.78f, 0.72f), 2 => (0.0f, 0.0f, 0.0f), _ => (0.075f, 0.5f, 0.1f) };
+		if (!StripBlurFromArgs) StripBlur = r;
+		sm.SetShaderParameter("radius", StripBlur);
+		sm.SetShaderParameter("dim", dim);
+		sm.SetShaderParameter("outer", outer);
+	}
+	private static bool StripBlurFromArgs;
 	public static float StripBlur = 0.025f;   // user: "less of a blur" (first look used 0.06)
 	private CanvasLayer _fillLayer, _railLayer;
 	private ColorRect _fill;
@@ -21,6 +35,26 @@ public partial class Wa2Wide : Node
 	private Vector2 _off;
 	private bool _wide, _built;
 	private const float Btn = 72f;
+	private HelpButton _help;
+	// "?" in the toolbar's style: a cyan ring with the game's own letters (Wa2Label).
+	private partial class HelpButton : Button
+	{
+		public override void _Ready()
+		{
+			Flat = true;
+			foreach (var st in new[] { "normal", "hover", "pressed", "focus" }) AddThemeStyleboxOverride(st, new StyleBoxEmpty());
+			var l = new Wa2Label { FontSize = 34, MaxChars = 4, Color = new Color(0.62f, 0.92f, 1f), Position = new Vector2(Size.X / 2 - 9, Size.Y / 2 - 15) };
+			AddChild(l); l.SetText("?");
+		}
+		public override void _Draw()
+		{
+			var c = Size / 2; float r = Size.X * 0.36f;
+			float a = ButtonPressed || IsPressed() ? 1f : 0.85f;
+			DrawCircle(c, r + 3, new Color(0.55f, 0.88f, 1f, 0.12f * a));
+			DrawArc(c, r, 0, Mathf.Tau, 48, new Color(0.62f, 0.92f, 1f, a), 3.2f, true);
+			DrawArc(c, r - 4, 0, Mathf.Tau, 48, new Color(0.2f, 0.45f, 0.55f, 0.6f * a), 1.5f, true);
+		}
+	}
 
 	public static void Attach(Wa2EngineMain e)
 	{
@@ -66,8 +100,11 @@ public partial class Wa2Wide : Node
 		// `--strip-blur=R` overrides the blur radius (fraction of screen height) for comparisons.
 		var rb = System.Linq.Enumerable.FirstOrDefault(OS.GetCmdlineUserArgs(), a => a.StartsWith("--strip-blur="));
 		if (rb != null && float.TryParse(rb["--strip-blur=".Length..], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float r))
-			StripBlur = r;
-		((ShaderMaterial)_fill.Material).SetShaderParameter("radius", StripBlur);
+		{ StripBlur = r; StripBlurFromArgs = true; }
+		_inst = this;
+		var fa = System.Linq.Enumerable.FirstOrDefault(OS.GetCmdlineUserArgs(), a => a.StartsWith("--side-fill="));
+		if (fa != null) Wa2Phone.FillIdx = int.Parse(fa["--side-fill=".Length..]);
+		ApplyFill();
 		GetViewport().SizeChanged += Layout;
 		Layout();
 	}
@@ -103,6 +140,9 @@ public partial class Wa2Wide : Node
 		Take(adv.AutoButton, 6, () => _e.AutoMode);
 		Take(adv.SkipButton, 7, () => _e.SkipMode || _e.Skipping);
 		Take(adv.OffButton, 8);
+		_help = new HelpButton { Size = new Vector2(Btn, Btn), FocusMode = Control.FocusModeEnum.None };
+		_help.Pressed += () => { Wa2Quick.Haptic(); Wa2Phone.Open(_e); };
+		_rails.AddChild(_help);
 		// Quick save / quick load stay hidden: the user does not use them and they crowded the strip.
 		// Auto-save on leaving the app (Wa2Quick) needs no button.
 	}
@@ -151,6 +191,7 @@ public partial class Wa2Wide : Node
 		At(4, cr, a2);   // auto
 		At(5, cr, b1);   // skip
 		At(6, cr, b2);   // hide text box
+		_help.Position = new Vector2(cl - Btn / 2, b2);   // guide and phone settings
 	}
 
 	private bool _lowApplied;
@@ -168,7 +209,8 @@ public partial class Wa2Wide : Node
 				_lowApplied = low;
 				Engine.MaxFps = low ? 30 : 60;
 				((ShaderMaterial)_fill.Material).SetShaderParameter("taps", low ? 12 : 64);
-				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? Mathf.Min(0.016f, StripBlur) : StripBlur);   // few taps need a small radius or they ghost
+				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? Mathf.Min(0.016f, StripBlur) : StripBlur);
+				if (!low) ApplyFill();   // few taps need a small radius or they ghost
 				Wa2Trace.Log("lowpower", low ? 1 : 0);
 				GD.Print("Wa2Wide: low power " + low);
 			}

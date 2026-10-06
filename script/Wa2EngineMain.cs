@@ -270,6 +270,7 @@ public partial class Wa2EngineMain : Control
 	{
 		Skipping = false;
 		SkipMode = false;
+		SkipKind = 0;
 	}
 	public void AddChar(CharItem item)
 	{
@@ -493,6 +494,7 @@ public partial class Wa2EngineMain : Control
 		
 		GetTree().SetQuitOnGoBack(false);
 		BootLog("Ready:start OS=" + OS.GetName());
+		Wa2Phone.LoadSettings();
 		Wa2Wide.Attach(this);
 		GameSav = new(this);
 		if (OS.GetName() == "Android")
@@ -983,9 +985,12 @@ public void ClickAdv(bool click = false)
 			}
 		}
 	}
+	// 0 = follow the Options setting, 1 = read text only (swipe right), 2 = everything (swipe left)
+	public int SkipKind = 0;
 	public bool CanSkip()
 	{
-		return (SkipMode || Skipping) && (HasReadMessage || (int)Prefs.GetConfig("msg_cut_optin") == 1 || Wa2UiMgr.DevSkipTo > 0) && !SkipDisable;
+		bool unreadOk = SkipKind == 2 || (SkipKind == 0 && (int)Prefs.GetConfig("msg_cut_optin") == 1);
+		return (SkipMode || Skipping) && (HasReadMessage || unreadOk || Wa2UiMgr.DevSkipTo > 0) && !SkipDisable;
 	}
 	public void AutoModeStart()
 	{
@@ -1006,6 +1011,10 @@ public void ClickAdv(bool click = false)
 		if (CanSkip())
 		{
 			ClickAdv();
+		}
+		else if (SkipMode && SkipKind == 1 && !HasReadMessage && AdvMain.State == Wa2AdvMain.AdvState.WAIT_CLICK)
+		{
+			StopSkip();   // "skip read text" stops at the first unread line, as on the PC
 		}
 		if (FrameDelta >= FrameTime)
 		{
@@ -1103,6 +1112,7 @@ public void ClickAdv(bool click = false)
 					if (st.Index == 0 && st.Pressed)
 					{
 						_touchStart = st.Position;
+						_touchStartMs = Time.GetTicksMsec();
 						_touchMoved = false;
 						_twoFinger = false;
 						IsPressed = true;
@@ -1144,6 +1154,7 @@ public void ClickAdv(bool click = false)
 		}
 	}
 	private Vector2 _touchStart;
+	private ulong _touchStartMs;
 	private bool _touchMoved, _twoFinger;
 	private bool AdvActive => AdvMain.Visible && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && !VideoPlayer.IsPlaying();
 	private void OnTouchRelease(Vector2 pos, bool longPress)
@@ -1159,8 +1170,29 @@ public void ClickAdv(bool click = false)
 			if (AdvActive && !AdvMain.SelectMessageContainer.Visible) AdvMain.OnBackLogButtonDown();
 			return;
 		}
+		if (-d.Y > 80 && Mathf.Abs(d.X) < -d.Y)   // swipe up: hide the text box
+		{
+			if (AdvActive) AdvMain.OnOffButtonDown();
+			return;
+		}
+		if (Mathf.Abs(d.X) > 80 && Mathf.Abs(d.Y) < Mathf.Abs(d.X))   // right: skip read, left: skip all
+		{
+			if (AdvActive && !AdvMain.SelectMessageContainer.Visible)
+			{
+				int kind = d.X > 0 ? 1 : 2;
+				bool on = !(SkipMode && SkipKind == kind);
+				StopSkip(); AutoMode = false; AutoTimer.DeActive();
+				if (on) { SkipKind = kind; SkipMode = true; Wa2Quick.Haptic(); }
+			}
+			return;
+		}
 		if (_touchMoved || longPress)
 			return;
+		if (Time.GetTicksMsec() - _touchStartMs >= 600 && Prefs.GetConfig("checkskip") != 1)   // hold: Auto on/off
+		{
+			if (AdvActive) { AdvMain.OnAutoButtonDown(); Wa2Quick.Haptic(); }
+			return;
+		}
 		Tap();
 	}
 	// A click or tap on the game screen (was inline in _GuiInput for the left mouse button).

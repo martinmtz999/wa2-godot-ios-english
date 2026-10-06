@@ -263,6 +263,7 @@ public partial class TitleMenu : Control
 		SetResourcesReady(_engine.ResourcesReady);
 		if (_engine.SysSav != null) ApplyUnlocks();
 		Show();
+		Callable.From(() => Wa2Quick.OfferResume(_engine)).CallDeferred();
 		Wa2EngineMain.RunGuarded(OpenAsync, "TitleMenu.Open");
 	}
 	private async Task OpenAsync()

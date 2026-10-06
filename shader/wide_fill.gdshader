@@ -11,7 +11,8 @@ uniform float aspect = 1.7778;                    // screen width / height
 uniform float dim = 0.78;
 uniform float radius = 0.025;                    // blur radius, fraction of screen height (Wa2Wide.StripBlur)
 uniform vec3 line_color = vec3(0.55, 0.88, 1.0);
-uniform int taps = 64;                            // 12 in Low Power Mode (Wa2Wide)
+uniform int taps = 64;
+uniform float outer = 0.72;                       // brightness at the screen edge (Deep fades to near black)                            // 12 in Low Power Mode (Wa2Wide)
 
 void fragment() {
 	vec2 uv = SCREEN_UV;
@@ -33,7 +34,7 @@ void fragment() {
 		bool side = uv.x < lo.x || uv.x > hi.x;
 		if (side) {
 			float edge = uv.x < lo.x ? uv.x / max(lo.x, 1e-4) : (1.0 - uv.x) / max(1.0 - hi.x, 1e-4);
-			c *= mix(0.72, 1.0, smoothstep(0.0, 1.0, edge));
+			c *= mix(outer, 1.0, smoothstep(0.0, 1.0, edge));
 			float dpx = (uv.x < lo.x ? lo.x - uv.x : uv.x - hi.x) / SCREEN_PIXEL_SIZE.x;
 			float line = exp(-dpx * dpx / 3.0) * 0.85 + exp(-dpx / 14.0) * 0.16;
 			float fade = smoothstep(0.0, 0.22, uv.y) * smoothstep(1.0, 0.78, uv.y);

@@ -42,6 +42,27 @@ public static class Wa2Quick
 		e.BootLog("AutoSave: slot " + AutoSlot);
 	}
 
+	// Resume on launch: the first time the title appears after the app starts, offer the auto-save.
+	private static bool _resumeOffered;
+	public static void OfferResume(Wa2EngineMain e)
+	{
+		if (_resumeOffered || Wa2Autoplay.Enabled) return;
+		_resumeOffered = true;
+		if (!FileAccess.FileExists(e.SavPath + string.Format("sav{0:D2}.sav", AutoSlot))) return;
+		e.UiMgr.OpenConfirm(Wa2EngineMain.Tr("继续上次的进度？", "Resume where you left off?"), "", true,
+			() => Wa2EngineMain.RunGuarded(() => ResumeAsync(e), "Wa2Quick.Resume"));
+	}
+	private static async System.Threading.Tasks.Task ResumeAsync(Wa2EngineMain e)
+	{
+		e.UiMgr.UIConfirm.Close();
+		e.SoundMgr.StopBgm();
+		var title = e.UiMgr.TitleMenu;
+		title.AnimationPlayer.Play("close");
+		await title.ToSignal(title.AnimationPlayer, AnimationMixer.SignalName.AnimationFinished);
+		e.UiMgr.OpenGame();
+		e.GameSav.LoadData(AutoSlot);
+	}
+
 	public static void Haptic()
 	{
 		if (OS.GetName() == "iOS") Input.VibrateHandheld(12, 0.35f);

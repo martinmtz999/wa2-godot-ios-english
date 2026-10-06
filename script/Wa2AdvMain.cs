@@ -107,6 +107,7 @@ public partial class Wa2AdvMain : Control
 	// default 1.35, chosen by the user for a 6.1" phone (2026-10-05). --text-scale=K overrides.
 	// The English lines are pre-wrapped at <= 55 half-width chars and pages hold <= 3 lines
 	// (99.97% of pages), which is what the box was sized for.
+	public static readonly bool TextScaleFromArgs = OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--text-scale="));
 	public static float TextScale = float.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--text-scale="))?["--text-scale=".Length..],
 		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1.35f;
