@@ -455,6 +455,9 @@ public partial class Wa2EngineMain : Control
 		{
 			Back();
 		}
+		// iOS can close a backgrounded app: save first (slot Wa2Quick.AutoSlot).
+		if (what == NotificationApplicationPaused || what == NotificationWMWindowFocusOut || what == NotificationApplicationFocusOut)
+			Wa2Quick.AutoSave(this);
 	}
 	public void Back()
 	{

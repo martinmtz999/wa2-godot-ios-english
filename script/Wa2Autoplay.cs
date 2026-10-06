@@ -110,11 +110,47 @@ public static class Wa2Autoplay
 			case 7:
 				if (_gTime < 1.5) return true;
 				Save("g5-rail-backlog"); Out($"RAIL backlog button -> top ui = {top} (want BackLogMenu)");
-				Finish(0, "gesture test done"); _gStep = 9; return true;
+				e.Back(); _gStep = 20; _gTime = 0; return true;
+			case 20:   // quick save via its side button
+				if (_gTime < 1.5) return true;
+				_qsIdx = e.CurMessageIdx;
+				TapNamed(e, "QSave");
+				_gStep = 21; _gTime = 0; return true;
+			case 21:
+				if (_gTime < 2.0) return true;
+				Out($"QUICK save at message {_qsIdx} -> slot 98 exists = {FileAccess.FileExists(e.SavPath + "sav98.sav")} (want True)");
+				var strip2 = new Vector2(20, DisplayServer.WindowGetSize().Y * 0.5f);
+				Touch(0, true, strip2); Touch(0, false, strip2);
+				_gStep = 22; _gTime = 0; return true;
+			case 22:
+				if (_gTime < 2.5) return true;
+				Out($"QUICK advanced to message {e.CurMessageIdx}");
+				TapNamed(e, "QLoad");
+				_gStep = 23; _gTime = 0; return true;
+			case 23:
+				if (_gTime < 1.0) return true;
+				Save("g6-quickload-confirm");
+				if (e.UiMgr.UiQueue.Peek() == e.UiMgr.UIConfirm) e.UiMgr.UIConfirm.OnConfirmBtnDown();
+				_gStep = 24; _gTime = 0; return true;
+			case 24:
+				if (_gTime < 3.0) return true;
+				Out($"QUICK load -> message {e.CurMessageIdx} (want {_qsIdx}); top ui = {e.UiMgr.UiQueue.Peek()?.Name}");
+				DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath(e.SavPath + "sav99.sav"));
+				e.Notification((int)Node.NotificationApplicationPaused);
+				Out($"AUTO save on app pause -> slot 99 exists = {FileAccess.FileExists(e.SavPath + "sav99.sav")} (want True)");
+				Finish(0, "gesture test done"); _gStep = 99; return true;
 		}
 		return true;
 	}
-	static int _gIdx;
+	static int _gIdx, _qsIdx;
+	static void TapNamed(Wa2EngineMain e, string name)
+	{
+		Control b = null;
+		foreach (Node n in e.GetTree().Root.FindChildren(name, "TextureButton", true, false)) b = n as Control;
+		if (b == null) { Out("no button " + name); return; }
+		Vector2 c = b.GetViewport().GetFinalTransform() * (b.GetGlobalTransformWithCanvas() * (b.Size / 2));
+		Touch(0, true, c); Touch(0, false, c);
+	}
 
 	public static void Tick(double delta)
 	{

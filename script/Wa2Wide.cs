@@ -87,7 +87,9 @@ public partial class Wa2Wide : Node
 			b.Size = new Vector2(Btn, Btn);
 			_btns.Add((b, col, active));
 		}
-		// PC sheet columns: 2 config, 3 save, 4 load, 5 backlog, 6 auto, 7 skip, 8 close
+		// PC sheet columns: 0 q.save, 1 q.load, 2 config, 3 save, 4 load, 5 backlog, 6 auto, 7 skip, 8 close
+		var qs = adv.GetNodeOrNull<TextureButton>("HBoxContainer/QSave");
+		var ql = adv.GetNodeOrNull<TextureButton>("HBoxContainer/QLoad");
 		Take(adv.OptionButton, 2);
 		Take(adv.SaveButton, 3);
 		Take(adv.LoadButton, 4);
@@ -95,6 +97,13 @@ public partial class Wa2Wide : Node
 		Take(adv.AutoButton, 6, () => _e.AutoMode);
 		Take(adv.SkipButton, 7, () => _e.SkipMode || _e.Skipping);
 		Take(adv.OffButton, 8);
+		if (qs != null && ql != null)
+		{
+			Take(qs, 0); Take(ql, 1);
+			qs.Visible = true; ql.Visible = true;
+			qs.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Quick.QuickSave(_e); };
+			ql.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Quick.QuickLoad(_e); };
+		}
 	}
 
 	private void Layout()
@@ -131,13 +140,15 @@ public partial class Wa2Wide : Node
 		// Groups above and below the vertical middle (Dynamic Island, rounded corners).
 		float step = Btn + 14, upper = top + 720 * 0.5f - 96 - Btn, lower = top + 720 * 0.5f + 96;
 		void At(int i, float x, float y) => _btns[i].btn.Position = new Vector2(x - Btn / 2, y);
-		At(0, cl, upper - step);       // config
+		// left: quick save / quick load above the middle; save, load, config below
 		At(1, cl, lower);              // save
 		At(2, cl, lower + step);       // load
+		At(0, cl, lower + 2 * step);   // config
 		At(3, cr, upper - step);       // backlog
 		At(4, cr, upper);              // auto
 		At(5, cr, lower);              // skip
 		At(6, cr, lower + step);       // hide text box
+		if (_btns.Count > 7) { At(7, cl, upper - step); At(8, cl, upper); }   // quick save, quick load
 	}
 
 	public override void _Process(double delta)

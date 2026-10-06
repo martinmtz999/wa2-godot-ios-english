@@ -15,6 +15,7 @@ public partial class Wa2Button : TextureButton
 		
 	}
 	public void OnClick(){
+		Wa2Quick.Haptic();
 		_engine.SoundMgr.PlaySysSe(ClickStream);
 	}
 	private void OnHover(){
