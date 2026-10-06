@@ -110,7 +110,10 @@ public partial class Wa2AdvMain : Control
 	public static float TextScale = float.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--text-scale="))?["--text-scale=".Length..],
 		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1.35f;
-	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704) + (p - new Vector2(640, 704)) * k;
+	// Wide screens move the toolbar into the side strips (Wa2Wide), freeing the bottom of the box:
+	// the box, name and text then sit this much lower. Set by Wa2Wide.
+	public static float WideDrop = 0;
+	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704 + WideDrop) + (p - new Vector2(640, 704)) * k;
 	public void ApplyTextScale()
 	{
 		if (!Wa2EngineMain.EnglishPatch || _engine.NovelMode) return;
@@ -125,6 +128,7 @@ public partial class Wa2AdvMain : Control
 		// (opaque part 1061px wide x 1.2 = 1273 of 1280); scaled uniformly it ran off both sides.
 		MessageBox.PivotOffset = new Vector2(624, 208);
 		MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f), k);
+		MessageBox.Position = new Vector2(16, 496 + WideDrop);
 		// Toolbar: slightly larger for touch when the text is enlarged, about its bottom-right corner.
 		var bar = GetNodeOrNull<Control>("HBoxContainer");
 		if (bar != null)

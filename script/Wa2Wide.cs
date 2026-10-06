@@ -120,6 +120,8 @@ public partial class Wa2Wide : Node
 			bg.Size = new Vector2(vs.X - 1280 - _off.X, vs.Y);
 			if (side == 0) bg.Size = new Vector2(_off.X, vs.Y);
 		}
+		float drop = _wide ? 40f : 0f;
+		if (Wa2AdvMain.WideDrop != drop) { Wa2AdvMain.WideDrop = drop; _e.AdvMain.ApplyTextScale(); }
 		if (!_wide) { _rails.Visible = false; return; }
 		BuildButtons();
 		float rw = _off.X, cl = rw / 2, cr = _off.X + 1280 + rw / 2, top = _off.Y;
