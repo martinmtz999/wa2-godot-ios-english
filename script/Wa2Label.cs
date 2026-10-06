@@ -80,9 +80,36 @@ public partial class Wa2Label : Node2D
 	// English text from a vector font (Fira Mono Medium, OFL, fonts_en/) instead of the 40px bitmap
 	// atlas, so it stays sharp when the 1280x720 game is shown at phone resolution. Sized to the PC
 	// glyphs' cap height, which makes its natural advance exactly the PC's 14px at size 28.
-	// `--text-font=bitmap` draws the PC atlas instead (for comparisons).
+	// Off by default: the user wants the PC's own letter shapes. `--text-font=vector` to compare.
 	private static FontFile _enFont;
-	private static readonly bool UseVectorText = !OS.GetCmdlineUserArgs().Contains("--text-font=bitmap");
+	private static readonly bool UseVectorText = OS.GetCmdlineUserArgs().Contains("--text-font=vector");
+	// Default: the PC's own English glyphs, sharpened. assets/fonts2x/en_rows.png is atlas rows 0-3
+	// upscaled x4 (tools/upscale-ui.sh); a size override keeps the original 3200x160 coordinates, and
+	// mipmaps keep it smooth when drawn smaller; cells are repacked 20 per row (see the tool). Used on screens >= 1.2x 720p unless --text-font=bitmap.
+	private static Texture2D _enHi;
+	private static bool _enHiTried;
+	private static Texture2D EnglishGlyphs(Texture2D fallback)
+	{
+		if (!_enHiTried)
+		{
+			_enHiTried = true;
+			var args = OS.GetCmdlineUserArgs();
+			float scale = DisplayServer.WindowGetSize().Y / 720f;
+			bool force = args.Contains("--ui-hires=1"), off = args.Contains("--text-font=bitmap") || args.Contains("--ui-hires=0");
+			if (!off && (force || scale >= 1.2f) && ResourceLoader.Exists("res://assets/fonts2x/en_rows.png"))
+			{
+				var img = ResourceLoader.Load<Texture2D>("res://assets/fonts2x/en_rows.png")?.GetImage();
+				if (img != null)
+				{
+					img.GenerateMipmaps();
+					var t = ImageTexture.CreateFromImage(img);
+					t.SetSizeOverride(new Vector2I(800, 640));   // 20 x 16 cells of 40px
+					_enHi = t;
+				}
+			}
+		}
+		return _enHi ?? fallback;
+	}
 	// Dark rim like the PC atlas glyphs have (keeps text readable over bright CGs); `--text-outline=N`.
 	private static readonly float TextOutline = float.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--text-outline="))?["--text-outline=".Length..],
@@ -530,12 +557,19 @@ public partial class Wa2Label : Node2D
 		// 0-3 are not measured yet and keep the 34px rule.
 		if (r.Chr == '\u2026')
 			dst = new(new Vector2(r.X - 4 * k, r.Y - 10 * k), new Vector2(40 * k, 34 * k));
+		Texture2D glyphs = EnglishGlyphs(FontTexture);
+		if (!ReferenceEquals(glyphs, FontTexture))
+		{
+			int i = cellY * 80 + cellX;                  // repacked: 20 cells per row
+			src = new(new Vector2(i % 20, i / 20) * Rect1Size, new Vector2(Rect1Size, Rect1Size));
+		}
+		if (!ReferenceEquals(glyphs, FontTexture)) TextureFilter = TextureFilterEnum.LinearWithMipmaps;
 		if (Shadow)
 		{
 			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * k, dst.Size);
-			DrawTextureRectRegion(FontTexture, shadow, src, new Color(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha));
+			DrawTextureRectRegion(glyphs, shadow, src, new Color(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha));
 		}
-		DrawTextureRectRegion(FontTexture, dst, src, new Color(Color.R, Color.G, Color.B, r.Alpha));
+		DrawTextureRectRegion(glyphs, dst, src, new Color(Color.R, Color.G, Color.B, r.Alpha));
 	}
 
 	private void DrawEnglishVector(CharRenderData r)
