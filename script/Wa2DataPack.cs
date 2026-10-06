@@ -72,6 +72,21 @@ public partial class Wa2DataPack : Node
 					if (!ReferenceEquals(h, t)) { node.Set(name, h); swapped++; }
 					else if (t is AtlasTexture) swapped++;
 				}
+				else if (v.Obj is ShaderMaterial sm && sm.Shader != null)
+				{
+					// mask.gdshader: swap cur/next textures and tell it they are x2 (see *_div uniforms).
+					foreach (string param in new[] { "cur_texture", "next_texture" })
+					{
+						// The texture may already be the x2 copy (scenes loaded after the cache swap).
+						if (sm.GetShaderParameter(param).Obj is Texture2D st
+							&& HiRes.TryGetValue(st.ResourcePath, out var hs) && sm.Shader.Code.Contains(param + "_div"))
+						{
+							sm.SetShaderParameter(param, hs);
+							sm.SetShaderParameter(param + "_div", 2.0f);
+							swapped++;
+						}
+					}
+				}
 				else if (v.Obj is SpriteFrames sf)
 				{
 					foreach (string anim in sf.GetAnimationNames())

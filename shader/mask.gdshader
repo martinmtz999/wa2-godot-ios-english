@@ -10,15 +10,19 @@ uniform float blend:hint_range(0.0, 1.0, 0.01)=0;
 uniform float fead_weight:hint_range(0,50)=1;
 uniform vec2 canvas_size=vec2(1280,720);
 uniform bool center=false;
+// x2 UI copies (Wa2DataPack) report their real pixel size to textureSize(); the swap sets these
+// to 2 so layout keeps using the original size. 1 = unchanged behaviour.
+uniform float cur_texture_div=1.0;
+uniform float next_texture_div=1.0;
 global uniform vec3 fb;
 varying vec2 cur_texture_size;
 varying vec2 mask_texture_size;
 varying vec2 next_texture_size;
 void vertex() {
     // 获取纹理大小，Godot 返回 vec2
-    cur_texture_size = vec2(textureSize(cur_texture, 0));
+    cur_texture_size = vec2(textureSize(cur_texture, 0)) / cur_texture_div;
 	mask_texture_size = vec2(textureSize(mask_texture, 0));
-	next_texture_size = vec2(textureSize(next_texture, 0));
+	next_texture_size = vec2(textureSize(next_texture, 0)) / next_texture_div;
 }
 vec4 fb_color(vec4 tex_color){
     float bias = length(fb- vec3(0.5)) * 2.0;

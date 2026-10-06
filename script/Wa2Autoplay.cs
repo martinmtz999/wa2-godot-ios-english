@@ -36,6 +36,19 @@ public static class Wa2Autoplay
 		Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage().SavePng(Dir.PathJoin(name + ".png"));
 	}
 
+	// `--title-shot=FILE`: save the title screen once it has settled (4 s), then quit. For comparisons.
+	static readonly string TitleShot = Arg("--title-shot=");
+	static double _titleTime;
+	public static void TitleTick(double delta)
+	{
+		if (string.IsNullOrEmpty(TitleShot) || Wa2EngineMain.Engine.State != Wa2EngineMain.GameState.TITLE) return;
+		_titleTime += delta;
+		if (_titleTime < 4) return;
+		Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
+		GD.Print("autoplay: title saved");
+		Wa2EngineMain.Engine.GetTree().Quit(0);
+	}
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;

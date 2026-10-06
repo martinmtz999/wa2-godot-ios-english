@@ -890,6 +890,7 @@ public void ClickAdv(bool click = false)
 	}
 	public override void _Process(double delta)
 	{
+		Wa2Autoplay.TitleTick(delta);
 		UpdateSakuraWeatherAnimation(delta);
 		if (State == GameState.NONE)
 		{
