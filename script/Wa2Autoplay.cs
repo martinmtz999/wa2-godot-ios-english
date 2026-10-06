@@ -114,7 +114,7 @@ public static class Wa2Autoplay
 			case 20:   // quick save via its side button
 				if (_gTime < 1.5) return true;
 				_qsIdx = e.CurMessageIdx;
-				TapNamed(e, "QSave");
+				Wa2Quick.QuickSave(e);
 				_gStep = 21; _gTime = 0; return true;
 			case 21:
 				if (_gTime < 2.0) return true;
@@ -125,7 +125,7 @@ public static class Wa2Autoplay
 			case 22:
 				if (_gTime < 2.5) return true;
 				Out($"QUICK advanced to message {e.CurMessageIdx}");
-				TapNamed(e, "QLoad");
+				Wa2Quick.QuickLoad(e);
 				_gStep = 23; _gTime = 0; return true;
 			case 23:
 				if (_gTime < 1.0) return true;

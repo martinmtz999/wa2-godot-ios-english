@@ -97,13 +97,8 @@ public partial class Wa2Wide : Node
 		Take(adv.AutoButton, 6, () => _e.AutoMode);
 		Take(adv.SkipButton, 7, () => _e.SkipMode || _e.Skipping);
 		Take(adv.OffButton, 8);
-		if (qs != null && ql != null)
-		{
-			Take(qs, 0); Take(ql, 1);
-			qs.Visible = true; ql.Visible = true;
-			qs.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Quick.QuickSave(_e); };
-			ql.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Quick.QuickLoad(_e); };
-		}
+		// Quick save / quick load stay hidden: the user does not use them and they crowded the strip.
+		// Auto-save on leaving the app (Wa2Quick) needs no button.
 	}
 
 	private void Layout()
@@ -137,18 +132,19 @@ public partial class Wa2Wide : Node
 		float ow = Mathf.Min(rw * 0.92f, 200), oh = ow * 125 / 220;
 		_ornaments[0].Position = new Vector2(cl - ow / 2, top + 14); _ornaments[0].Size = new Vector2(ow, oh);
 		_ornaments[1].Position = new Vector2(cr - ow / 2, top + 14); _ornaments[1].Size = new Vector2(ow, oh);
-		// Groups above and below the vertical middle (Dynamic Island, rounded corners).
-		float step = Btn + 14, upper = top + 720 * 0.5f - 96 - Btn, lower = top + 720 * 0.5f + 96;
+		// Two groups per strip, mirrored, with roomy spacing, clear of the vertical middle (Dynamic
+		// Island) and of the rounded corners. Left = system: Save, Load above; Options below.
+		// Right = reading (thumb): Backlog, Auto above; Skip, Hide below.
+		float step = Btn + 30, mid = top + 720 * 0.5f;
+		float a1 = mid - 70 - Btn - step, a2 = mid - 70 - Btn, b1 = mid + 70, b2 = mid + 70 + step;
 		void At(int i, float x, float y) => _btns[i].btn.Position = new Vector2(x - Btn / 2, y);
-		// left: quick save / quick load above the middle; save, load, config below
-		At(1, cl, lower);              // save
-		At(2, cl, lower + step);       // load
-		At(0, cl, lower + 2 * step);   // config
-		At(3, cr, upper - step);       // backlog
-		At(4, cr, upper);              // auto
-		At(5, cr, lower);              // skip
-		At(6, cr, lower + step);       // hide text box
-		if (_btns.Count > 7) { At(7, cl, upper - step); At(8, cl, upper); }   // quick save, quick load
+		At(1, cl, a1);   // save
+		At(2, cl, a2);   // load
+		At(0, cl, b1);   // options
+		At(3, cr, a1);   // backlog
+		At(4, cr, a2);   // auto
+		At(5, cr, b1);   // skip
+		At(6, cr, b2);   // hide text box
 	}
 
 	private bool _lowApplied;
@@ -166,7 +162,7 @@ public partial class Wa2Wide : Node
 				_lowApplied = low;
 				Engine.MaxFps = low ? 30 : 60;
 				((ShaderMaterial)_fill.Material).SetShaderParameter("taps", low ? 12 : 64);
-				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? 0.016f : 0.04f);   // few taps need a small radius or they ghost
+				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? 0.016f : 0.06f);   // few taps need a small radius or they ghost
 				Wa2Trace.Log("lowpower", low ? 1 : 0);
 				GD.Print("Wa2Wide: low power " + low);
 			}
