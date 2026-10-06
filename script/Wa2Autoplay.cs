@@ -93,7 +93,24 @@ public static class Wa2Autoplay
 			case 5:
 				if (_gTime < 2.5) return true;
 				Out($"GESTURE tap -> message {_gIdx} -> {e.CurMessageIdx} (want it to advance)");
-				Finish(0, "gesture test done"); _gStep = 6; return true;
+				if (e.AdvMain.BackLogButton.GetParent() == e.AdvMain.GetNode("HBoxContainer")) { Finish(0, "gesture test done"); _gStep = 9; return true; }
+				// Side-strip checks (wide screens): tap the blurred strip, then the backlog button.
+				_gIdx = e.CurMessageIdx;
+				var strip = new Vector2(20, DisplayServer.WindowGetSize().Y * 0.5f);
+				Touch(0, true, strip); Touch(0, false, strip);
+				_gStep = 6; _gTime = 0; return true;
+			case 6:
+				if (_gTime < 2.5) return true;
+				Save("g4-rail-tap"); Out($"RAIL tap on the strip -> message {_gIdx} -> {e.CurMessageIdx} (want it to advance)");
+				var b = e.AdvMain.BackLogButton;
+				// window pixels = viewport final transform * canvas position (buttons sit on a CanvasLayer)
+				Vector2 c = b.GetViewport().GetFinalTransform() * (b.GetGlobalTransformWithCanvas() * (b.Size / 2));
+				Touch(0, true, c); Touch(0, false, c);
+				_gStep = 7; _gTime = 0; return true;
+			case 7:
+				if (_gTime < 1.5) return true;
+				Save("g5-rail-backlog"); Out($"RAIL backlog button -> top ui = {top} (want BackLogMenu)");
+				Finish(0, "gesture test done"); _gStep = 9; return true;
 		}
 		return true;
 	}

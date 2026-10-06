@@ -490,6 +490,7 @@ public partial class Wa2EngineMain : Control
 		
 		GetTree().SetQuitOnGoBack(false);
 		BootLog("Ready:start OS=" + OS.GetName());
+		Wa2Wide.Attach(this);
 		GameSav = new(this);
 		if (OS.GetName() == "Android")
 		{
