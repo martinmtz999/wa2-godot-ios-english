@@ -42,9 +42,26 @@ public static class Wa2Autoplay
 	static bool _opened;
 	public static void TitleTick(double delta)
 	{
-		if (string.IsNullOrEmpty(TitleShot) || Wa2EngineMain.Engine.State != Wa2EngineMain.GameState.TITLE) return;
+		if (string.IsNullOrEmpty(TitleShot)) return;
+		if (_opened && Args.Contains("--title-open=newgame"))
+		{
+			_titleTime += delta;
+			if (_titleTime < 8) return;
+			var e0 = Wa2EngineMain.Engine;
+			e0.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
+			GD.Print($"autoplay: newgame saved state={e0.State} specials={e0.UiMgr.TitleMenu.SpecialButton.Visible} cc={e0.UiMgr.TitleMenu.CcButton.Visible} coda={e0.UiMgr.TitleMenu.CodeaButton.Visible}");
+			e0.GetTree().Quit(0); return;
+		}
+		if (Wa2EngineMain.Engine.State != Wa2EngineMain.GameState.TITLE) return;
 		_titleTime += delta;
 		if (_titleTime < 4) return;
+		if (Args.Contains("--title-open=newgame") && !_opened)
+		{
+			_opened = true;
+			GD.Print($"autoplay: title specials={Wa2EngineMain.Engine.UiMgr.TitleMenu.SpecialButton.Visible}");
+			Wa2EngineMain.Engine.UiMgr.TitleMenu.OnStartButtonDown();
+			return;
+		}
 		// `--title-open=cg`: open the CG gallery first (to check unlocks), capture 3 s later
 		if (Args.Contains("--title-open=cg"))
 		{

@@ -233,16 +233,35 @@ public partial class TitleMenu : Control
 		MenuBttons.Show();
 		Special.Hide();
 	}
+	// Unlocks as in the PC game (verified 2026-10-06 by running WA2.exe with edited Sys.sav files):
+	// system flag 0 (set when the Introductory Chapter is finished) shows Specials and turns New Game
+	// into the chapter menu with the Introductory and Closing chapters; flag 5 adds the Coda. With
+	// neither, New Game starts the Introductory Chapter directly.
+	private bool IcCleared => _engine.ReadSysFlag(0) == 1;
+	private bool CodaOpen => _engine.ReadSysFlag(5) == 1;
+	public void ApplyUnlocks()
+	{
+		SpecialButton.Visible = IcCleared;
+		CcButton.Visible = IcCleared;
+		CodeaButton.Visible = IcCleared && CodaOpen;
+	}
 	public void OnStartButtonDown()
 	{
 		if (!CanOpenContent())
 			return;
+		if (!IcCleared)
+		{
+			OnIcButtonDown();
+			return;
+		}
+		ApplyUnlocks();
 		MenuBttons.Hide();
 		InitalStart.Show();
 	}
 	public void Open()
 	{
 		SetResourcesReady(_engine.ResourcesReady);
+		if (_engine.SysSav != null) ApplyUnlocks();
 		Show();
 		Wa2EngineMain.RunGuarded(OpenAsync, "TitleMenu.Open");
 	}
