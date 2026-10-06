@@ -39,11 +39,18 @@ public static class Wa2Autoplay
 	// `--title-shot=FILE`: save the title screen once it has settled (4 s), then quit. For comparisons.
 	static readonly string TitleShot = Arg("--title-shot=");
 	static double _titleTime;
+	static bool _opened;
 	public static void TitleTick(double delta)
 	{
 		if (string.IsNullOrEmpty(TitleShot) || Wa2EngineMain.Engine.State != Wa2EngineMain.GameState.TITLE) return;
 		_titleTime += delta;
 		if (_titleTime < 4) return;
+		// `--title-open=cg`: open the CG gallery first (to check unlocks), capture 3 s later
+		if (Args.Contains("--title-open=cg"))
+		{
+			if (!_opened) { _opened = true; Wa2EngineMain.Engine.UiMgr.OpenCGModeMenu(); return; }
+			if (_titleTime < 7) return;
+		}
 		Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
 		GD.Print("autoplay: title saved");
 		Wa2EngineMain.Engine.GetTree().Quit(0);
