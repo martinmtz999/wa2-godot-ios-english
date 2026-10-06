@@ -214,6 +214,18 @@ public static class Wa2Autoplay
 			string key = $"{e.Script.ScriptName}_{e.CurMessageIdx}", k = key;
 			for (int j = 2; _keys.Contains(k); j++) k = $"{key}_{j}";
 			_keys.Add(k);
+			// `--import-slot=N`: rebuild a PC save by replay; save the port slot at the --skip-to line.
+			string slot = Arg("--import-slot=");
+			if (slot != null)
+			{
+				int want = int.TryParse(Arg("--skip-to="), out int w) ? w : -1;
+				if (e.CurMessageIdx != want) { Finish(5, $"import: stopped at {e.Script.ScriptName} {e.CurMessageIdx}, wanted {want}"); return; }
+				e.GameSav.SaveData(int.Parse(slot));
+				Save("import");
+				Out($"import: saved {e.Script.ScriptName} message {e.CurMessageIdx} to slot {slot}; flags {string.Join(",", e.GameFlags)}");
+				Finish(0, "import done");
+				return;
+			}
 			Save(k);
 			_done++;
 			Out($"{k} saved");

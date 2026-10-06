@@ -129,6 +129,14 @@ public partial class Wa2UiMgr : Control
 			string name = _devStartScript;
 			_devStartScript = null;
 			_engine.StartScript(name);
+			// `--import-flags=v0,v1,...`: game flags from a PC save (tools/pc-save-flags.py)
+			string fl = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--import-flags="))?["--import-flags=".Length..];
+			if (fl != null)
+			{
+				var vals = fl.Split(',');
+				for (int i = 0; i < vals.Length && i < _engine.GameFlags.Length; i++) _engine.GameFlags[i] = int.Parse(vals[i]);
+				GD.Print("import: game flags set " + fl);
+			}
 			OpenGame();
 			_engine.SkipMode = DevSkipTo > 0;
 			return;
