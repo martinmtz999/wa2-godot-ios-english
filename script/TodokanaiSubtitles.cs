@@ -37,6 +37,21 @@ public partial class TodokanaiSubtitles : Node2D
 		Image img = Image.LoadFromFile(dir.PathJoin("font.png"));
 		if (img != null)
 			_font = ImageTexture.CreateFromImage(img);
+		// Sharper on high-resolution screens: assets/fonts2x/todokanai_font.png is this font x2
+		// (tools/upscale-ui.sh). The size override keeps the glyph table's coordinates.
+		var args = OS.GetCmdlineUserArgs();
+		bool force = System.Array.IndexOf(args, "--ui-hires=1") >= 0, off = System.Array.IndexOf(args, "--ui-hires=0") >= 0;
+		if (img != null && !off && (force || DisplayServer.WindowGetSize().Y / 720f >= 1.2f)
+			&& ResourceLoader.Exists("res://assets/fonts2x/todokanai_font.png"))
+		{
+			Image hi = ResourceLoader.Load<Texture2D>("res://assets/fonts2x/todokanai_font.png")?.GetImage();
+			if (hi != null && hi.GetWidth() == img.GetWidth() * 2 && hi.GetHeight() == img.GetHeight() * 2)
+			{
+				var t = ImageTexture.CreateFromImage(hi);
+				t.SetSizeOverride(new Vector2I(img.GetWidth(), img.GetHeight()));
+				_font = t;
+			}
+		}
 		using var file = FileAccess.Open(dir.PathJoin("subtitles"), FileAccess.ModeFlags.Read);
 		if (file == null)
 			return;
