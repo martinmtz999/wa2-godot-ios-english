@@ -546,6 +546,17 @@ public partial class Wa2Label : Node2D
 	// 34px (size 28), offset (-3,-10), with a solid gray copy 2px down-right as the shadow. We use
 	// 1px: the user preferred the lighter look over an exact match.
 	private const int EnglishAtlasRows = 4;
+	// English shadow: offset in px at size 28 and opacity; `--shadow=OFFSET,ALPHA` overrides.
+	private static readonly float[] EnShadow = ParseShadow();
+	private static float[] ParseShadow()
+	{
+		string a = OS.GetCmdlineUserArgs().FirstOrDefault(x => x.StartsWith("--shadow="))?["--shadow=".Length..];
+		var p = a?.Split(',');
+		var ci = System.Globalization.CultureInfo.InvariantCulture;
+		if (p?.Length == 2 && float.TryParse(p[0], System.Globalization.NumberStyles.Float, ci, out float o) && float.TryParse(p[1], System.Globalization.NumberStyles.Float, ci, out float al))
+			return [o, al];
+		return [0.5f, 1f];   // half the earlier offset: matches the PC's thin edge (user, 2026-10-05)
+	}
 	private void DrawEnglishCell(CharRenderData r, int cellX, int cellY)
 	{
 		float k = r.Size / 28f;
@@ -566,8 +577,8 @@ public partial class Wa2Label : Node2D
 		if (!ReferenceEquals(glyphs, FontTexture)) TextureFilter = TextureFilterEnum.LinearWithMipmaps;
 		if (Shadow)
 		{
-			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * k, dst.Size);
-			DrawTextureRectRegion(glyphs, shadow, src, new Color(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha));
+			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * EnShadow[0] * k, dst.Size);
+			DrawTextureRectRegion(glyphs, shadow, src, new Color(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha * EnShadow[1]));
 		}
 		DrawTextureRectRegion(glyphs, dst, src, new Color(Color.R, Color.G, Color.B, r.Alpha));
 	}
