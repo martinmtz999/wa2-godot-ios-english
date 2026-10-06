@@ -577,6 +577,7 @@ public class Wa2Script
 			}
 			if (ScriptPos >= _bnrbuffer.Length || Exit)
 			{
+				Wa2Trace.Log("ret", ScriptName, Exit ? 1 : 0);
 				if (_engine.ScriptStack.Count > 1)
 				{
 					_engine.ScriptStack.Pop();

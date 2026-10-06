@@ -81,6 +81,7 @@ public partial class Wa2SoundMgr : Node
 	}
 	public void PlayVoice(int label, int id, int chr, int volume = 256, bool loop = false, int channel = 0)
 	{
+		Wa2Trace.Log("voice", label, id, chr, volume, channel);
 		bool isCharVoice = Array.IndexOf(Wa2Def.EroChar, chr) >= 0;
 		Wa2VoiceAudio audio = _voiceAudios[channel];
 		audio.Chr = chr;
@@ -135,6 +136,7 @@ public partial class Wa2SoundMgr : Node
 	}
 	public void PlayBgm(int id, bool loopFlag = true, int volume = 255)
 	{
+		Wa2Trace.Log("bgm", id, loopFlag ? 1 : 0, volume);
 		if (id < 0)
 		{
 			return;
@@ -218,6 +220,7 @@ public partial class Wa2SoundMgr : Node
 	}
 	public void PlaySe(int channel, int id, bool loopFlag = false, float time = 0.0f, int volume = 255)
 	{
+		Wa2Trace.Log("se", channel, id, loopFlag ? 1 : 0, volume);
 		// GD.Print("播放音效2");
 		SeAudios[channel].PlaySound(id, loopFlag, time, volume);
 		_engine.SubtitleMgr.ListenSe(id, SeAudios[channel]);

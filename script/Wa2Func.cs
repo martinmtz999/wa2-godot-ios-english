@@ -204,6 +204,7 @@ public class Wa2Func
 		_engine.AdvMain.TextProgress = 0;
 		_engine.AdvMain.ParseMode = v4;
 		_engine.CurMessageIdx = idx;
+		Wa2Trace.Log("msg", _engine.Script.ScriptName, idx, v3, text);
 		if (Wa2UiMgr.DevSkipTo > 0)
 		{
 			_engine.SkipMode = idx < Wa2UiMgr.DevSkipTo;
@@ -863,6 +864,7 @@ public class Wa2Func
 	}
 	public bool Wait(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("wait", args[0].GetInt());
 		_engine.WaitTimer.Start(args[0].GetInt() * _engine.FrameTime);
 		return false;
 
@@ -874,6 +876,7 @@ public class Wa2Func
 	}
 	public bool WaitTimer(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("waittimer", args[0].GetInt());
 
 		// _engine.EndTime = _engine.StartTime + (int)args[0].Get();
 		// if (_engine.Skipping && _engine.SkipMode)
@@ -1229,6 +1232,7 @@ public class Wa2Func
 	}
 	public bool SLoad(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("sload", args[0].GetString(), args[1].GetInt());
 		_engine.Reset(false);
 		_engine.ScriptStack.Clear();
 		_engine.Script = new(args[0].GetString(), args[1].GetInt());
@@ -1242,6 +1246,7 @@ public class Wa2Func
 	{
 		_engine.Reset(false);
 		GD.Print("调用脚本", args[0].GetString());
+		Wa2Trace.Log("scall", args[0].GetString(), args[1].GetInt());
 		_engine.ScriptStack.Push(new(args[0].GetString(), args[1].GetInt()));
 		_engine.Script = _engine.ScriptStack.Peek();
 		_engine.SetScriptIdx(_engine.Script.ScriptName);
@@ -1251,6 +1256,7 @@ public class Wa2Func
 	}
 	public bool call(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("call", _engine.Script.ScriptName, args[0].GetInt());
 		_engine.ScriptStack.Push(new(_engine.Script.ScriptName, args[0].GetInt()));
 		_engine.Script = _engine.ScriptStack.Peek();
 		return false;

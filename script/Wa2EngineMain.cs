@@ -235,6 +235,7 @@ public partial class Wa2EngineMain : Control
 		if (Engine == null)
 		{
 			Engine = this;
+			Wa2Trace.Init();
 			string[] args = OS.GetCmdlineArgs();
 			foreach (string arg in args)
 			{
@@ -1135,6 +1136,7 @@ public void ClickAdv(bool click = false)
 	}
 	public void PlayMovie(string name)
 	{
+		Wa2Trace.Log("movie", name);
 		// iOS: 使用 Godot 内置 VideoStreamPlayer 播放 movie/ 目录下的 ogv(Theora)。
 		// Android 版改用 addons/gde_gozen 直接解码原版 pak 视频，但该 GDExtension
 		// 没有 iOS 原生库，因此 iOS 沿用 0.1.8 的 ogv 方案。
