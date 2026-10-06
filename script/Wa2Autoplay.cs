@@ -138,6 +138,14 @@ public static class Wa2Autoplay
 				DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath(e.SavPath + "sav99.sav"));
 				e.Notification((int)Node.NotificationApplicationPaused);
 				Out($"AUTO save on app pause -> slot 99 exists = {FileAccess.FileExists(e.SavPath + "sav99.sav")} (want True)");
+				if (Wa2Feel.Force)
+				{
+					int f0 = Wa2Feel.Fired;
+					Wa2Feel.OnSe(2210); int a = Wa2Feel.Fired - f0;          // everyday sound: no pulse
+					Wa2Feel.OnSe(8271); int b2 = Wa2Feel.Fired - f0;         // impact: pulse
+					Wa2Feel.OnSe(8405); int c2 = Wa2Feel.Fired - f0;         // second impact within 10 s: no pulse
+					Out($"HAPTIC everyday={a} impact={b2} second-within-10s={c2} (want 0 1 1)");
+				}
 				Finish(0, "gesture test done"); _gStep = 99; return true;
 		}
 		return true;

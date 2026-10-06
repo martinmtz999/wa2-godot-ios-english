@@ -151,8 +151,26 @@ public partial class Wa2Wide : Node
 		if (_btns.Count > 7) { At(7, cl, upper - step); At(8, cl, upper); }   // quick save, quick load
 	}
 
+	private bool _lowApplied;
+	private double _powerCheck;
 	public override void _Process(double delta)
 	{
+		// Low Power Mode: 30 fps and a cheap 8-tap blur in the strips; back to 60 fps / 64 taps after.
+		_powerCheck -= delta;
+		if (_powerCheck <= 0)
+		{
+			_powerCheck = 3;
+			bool low = Wa2Feel.LowPower;
+			if (low != _lowApplied)
+			{
+				_lowApplied = low;
+				Engine.MaxFps = low ? 30 : 60;
+				((ShaderMaterial)_fill.Material).SetShaderParameter("taps", low ? 12 : 64);
+				((ShaderMaterial)_fill.Material).SetShaderParameter("radius", low ? 0.016f : 0.04f);   // few taps need a small radius or they ghost
+				Wa2Trace.Log("lowpower", low ? 1 : 0);
+				GD.Print("Wa2Wide: low power " + low);
+			}
+		}
 		if (!_wide || _e == null) return;
 		var adv = _e.AdvMain;
 		bool show = _e.State == Wa2EngineMain.GameState.GAME && adv.IsVisibleInTree()

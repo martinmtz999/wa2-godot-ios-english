@@ -220,6 +220,7 @@ public partial class Wa2SoundMgr : Node
 	}
 	public void PlaySe(int channel, int id, bool loopFlag = false, float time = 0.0f, int volume = 255)
 	{
+		Wa2Feel.OnSe(id);
 		Wa2Trace.Log("se", channel, id, loopFlag ? 1 : 0, volume);
 		// GD.Print("播放音效2");
 		SeAudios[channel].PlaySound(id, loopFlag, time, volume);
