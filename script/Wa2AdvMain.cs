@@ -1,4 +1,5 @@
 using Godot;
+using System.Linq;
 using System;
 //对话框状态
 public partial class Wa2AdvMain : Control
@@ -97,7 +98,29 @@ public partial class Wa2AdvMain : Control
 			TextLabel.FontSize = 28;
 			TextLabel.MaxChars = 28;
 			TextLabel.Position = new Vector2(278, 562);
+			ApplyTextScale();
 		}
+	}
+	// Larger dialogue for small phone screens (English mode). Scales the text, line spacing, name
+	// and the message box together about the box's bottom centre (640, 704), so the layout keeps
+	// its proportions and the text stays inside the box; the box grows upward. 1 = PC layout.
+	// The English lines are pre-wrapped at <= 55 half-width chars and pages hold <= 3 lines
+	// (99.97% of pages), which is what the box was sized for.
+	public static float TextScale = float.TryParse(OS.GetCmdlineUserArgs()
+		.FirstOrDefault(a => a.StartsWith("--text-scale="))?["--text-scale=".Length..],
+		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1f;
+	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704) + (p - new Vector2(640, 704)) * k;
+	public void ApplyTextScale()
+	{
+		if (!Wa2EngineMain.EnglishPatch || _engine.NovelMode) return;
+		float k = TextScale;
+		TextLabel.FontSize = Mathf.RoundToInt(28 * k);
+		TextLabel.ParagraphSpacing = Mathf.RoundToInt(13 * k);
+		TextLabel.Position = ScaleAboutBoxBottom(new Vector2(278, 562), k);
+		NameLabel.FontSize = Mathf.RoundToInt(28 * k);
+		NameLabel.Position = ScaleAboutBoxBottom(new Vector2(278, 521), k);
+		MessageBox.PivotOffset = new Vector2(624, 208);
+		MessageBox.Scale = new Vector2(k, k);
 	}
 	public void Init(Wa2EngineMain e)
 	{
