@@ -269,10 +269,59 @@ public static class Wa2Autoplay
 		Touch(0, true, c); Touch(0, false, c);
 	}
 
+	// `--backlog-voice-test`: after 3 voiced lines open the backlog by swipe, tap each visible voice
+	// button with a touch, and check the same voice (label/id) is played again.
+	static readonly List<string> _voices = new();
+	public static void OnVoice(int label, int id) { _voices.Add($"{label}:{id}"); }
+	static int _bvStep; static double _bvTime; static int _bvItem;
+	static bool BacklogVoiceTick(double delta, Wa2EngineMain e)
+	{
+		if (!Args.Contains("--backlog-voice-test") || _done < 3) return false;
+		_bvTime += delta;
+		switch (_bvStep)
+		{
+			case 0:
+				Out($"BLVOICE voices played while reading: {string.Join(" ", _voices)}");
+				Swipe(new Vector2(640, 250), new Vector2(645, 430));
+				_bvStep = 1; _bvTime = 0; return true;
+			case 1:
+				if (_bvTime < 1.5) return true;
+				Save("bl-open");
+				var m = e.UiMgr.BackLogMenu;
+				Out($"BLVOICE backlog open = {e.UiMgr.UiQueue.Peek() == m}");
+				_bvStep = 2; _bvTime = 0; _bvItem = 0; return true;
+			case 2:
+				if (_bvTime < 0.6) return true;
+				var menu = e.UiMgr.BackLogMenu;
+				while (_bvItem < menu.BackLogItems.GetChildCount())
+				{
+					var it = menu.BackLogItems.GetChild<BackLogItem>(_bvItem);
+					if (it.Visible && it.VoiceBtn.IsVisibleInTree())
+					{
+						var b = it.VoiceBtn;
+						// tap 24 px right of the icon's centre: outside the original 28 px button
+						Vector2 c = b.GetViewport().GetFinalTransform() * (b.GetGlobalTransformWithCanvas() * (b.Size / 2) + new Vector2(24, 0));
+						_voices.Clear();
+						Touch(0, true, c); Touch(0, false, c);
+						Out($"BLVOICE tap entry {_bvItem} (expects {it.VoiceInfos[0].Label}:{it.VoiceInfos[0].Id}, disabled={b.Disabled}, size {b.Size * b.GetGlobalTransformWithCanvas().Scale} game px)");
+						_bvItem++; _bvStep = 3; _bvTime = 0; return true;
+					}
+					_bvItem++;
+				}
+				Finish(0, "backlog voice test done"); _bvStep = 9; return true;
+			case 3:
+				if (_bvTime < 0.8) return true;
+				Out($"BLVOICE   -> played {(_voices.Count == 0 ? "nothing" : string.Join(" ", _voices))}");
+				_bvStep = 2; _bvTime = 0; return true;
+		}
+		return true;
+	}
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;
 		var e = Wa2EngineMain.Engine;
+		if (BacklogVoiceTick(delta, e)) return;
 		if (Args.Contains("--show-panel") && _done >= 2)
 		{
 			if (!Wa2Phone.IsOpen && _gTime == 0) { Wa2Phone.Open(e); _gTime = 0.001; return; }
@@ -322,8 +371,8 @@ public static class Wa2Autoplay
 			_done++;
 			Out($"{k} saved");
 			_settled = 0; _idle = 0; _nudge = 0;
-			if (_done >= Lines && !GestureTest) { Finish(0, "done"); return; }
-			if (GestureTest && _done >= 3) return;
+			if (_done >= Lines && !GestureTest && !Args.Contains("--backlog-voice-test")) { Finish(0, "done"); return; }
+			if ((GestureTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
 			e.ClickAdv(true);
 			return;
 		}

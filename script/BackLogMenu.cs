@@ -40,6 +40,7 @@ public partial class BackLogMenu : BasePage
       {
         var it = BackLogItems.GetChild<BackLogItem>(i);
         it.CustomMinimumSize = _origItem; it.NmaeLabel.FontSize = 28; it.TextLabel.FontSize = 28; it.TextLabel.ParagraphSpacing = 13;
+        it.VoiceBtn.Scale = Vector2.One;
         it.TextLabel.Position = new Vector2(it.TextLabel.Position.X, _origTextY);
       }
       return;
@@ -55,6 +56,18 @@ public partial class BackLogMenu : BasePage
     {
       var item = BackLogItems.GetChild<BackLogItem>(i);
       item.CustomMinimumSize = new Vector2(half * 2, rowH);
+      // voice replay: icon grows with the text; a larger invisible tap area (~47x40 pt on a phone)
+      var vb = item.VoiceBtn;
+      vb.PivotOffset = vb.Size / 2;
+      vb.Scale = new Vector2(k, k);
+      if (item.GetNodeOrNull<Button>("VoiceHit") == null)
+      {
+        var hit = new Button { Name = "VoiceHit", Flat = true, FocusMode = FocusModeEnum.None,
+          Position = vb.Position + vb.Size / 2 - new Vector2(40, 34), Size = new Vector2(80, 68) };
+        foreach (var st in new[] { "normal", "hover", "pressed", "focus", "disabled" }) hit.AddThemeStyleboxOverride(st, new StyleBoxEmpty());
+        hit.ButtonDown += () => { if (vb.IsVisibleInTree() && !vb.Disabled) vb.EmitSignal(BaseButton.SignalName.ButtonDown); };
+        item.AddChild(hit);
+      }
       item.NmaeLabel.FontSize = Mathf.RoundToInt(28 * k);
       item.TextLabel.FontSize = Mathf.RoundToInt(28 * k);
       item.TextLabel.ParagraphSpacing = Mathf.RoundToInt(13 * k);

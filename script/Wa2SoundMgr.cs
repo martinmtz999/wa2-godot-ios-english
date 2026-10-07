@@ -81,6 +81,7 @@ public partial class Wa2SoundMgr : Node
 	}
 	public void PlayVoice(int label, int id, int chr, int volume = 256, bool loop = false, int channel = 0)
 	{
+		Wa2Autoplay.OnVoice(label, id);
 		Wa2Trace.Log("voice", label, id, chr, volume, channel);
 		bool isCharVoice = Array.IndexOf(Wa2Def.EroChar, chr) >= 0;
 		Wa2VoiceAudio audio = _voiceAudios[channel];
