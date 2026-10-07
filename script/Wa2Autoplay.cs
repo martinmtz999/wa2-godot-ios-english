@@ -317,10 +317,59 @@ public static class Wa2Autoplay
 		return true;
 	}
 
+	// `--assist-test`: open each menu, list buttons under 74 game px (~44 pt), tap ~26 px outside its
+	// exit button with a touch, and check the menu closed.
+	static int _asStep, _asMenu; static double _asTime;
+	static readonly string[] AsMenus = { "panel", "options", "save", "backlog" };
+	static bool AssistTick(double delta, Wa2EngineMain e)
+	{
+		if (!Args.Contains("--assist-test") || _done < 2) return false;
+		_asTime += delta;
+		if (_asMenu >= AsMenus.Length) { Finish(0, "assist test done"); return true; }
+		string m = AsMenus[_asMenu];
+		switch (_asStep)
+		{
+			case 0:
+				if (_asTime < 1.0) return true;
+				if (m == "panel") Wa2Phone.Open(e);
+				else if (m == "options") e.UiMgr.OpenOptionsMenu();
+				else if (m == "save") e.UiMgr.OpenSaveMenu();
+				else e.AdvMain.OnBackLogButtonDown();
+				_asStep = 1; _asTime = 0; return true;
+			case 1:
+				if (_asTime < 2.0) return true;
+				Save("assist-" + m);
+				var small = new List<string>();
+				foreach (var (n, sz) in Wa2TouchAssist.Audit()) if (Mathf.Min(sz.X, sz.Y) < 74) small.Add($"{n} {sz.X:0}x{sz.Y:0}");
+				Out($"ASSIST {m}: {small.Count} buttons under 74 px: {string.Join(", ", small)}");
+				Control exit = m == "panel" ? FindClose(e) : (e.UiMgr.UiQueue.Peek() as BasePage)?.ExitBtn;
+				if (exit == null) { Out($"ASSIST {m}: no exit button found"); _asMenu++; _asStep = 0; return true; }
+				var r = exit.GetGlobalRect();
+				Vector2 canvas = new Vector2(r.GetCenter().X, r.End.Y + 26);   // 26 px below the button
+				Vector2 win = e.GetViewport().GetFinalTransform() * canvas;
+				Out($"ASSIST {m}: exit {r.Size.X:0}x{r.Size.Y:0} at {r.Position}; tapping 26 px below it");
+				Touch(0, true, win); Touch(0, false, win);
+				_asStep = 2; _asTime = 0; return true;
+			case 2:
+				if (_asTime < 2.5) return true;
+				Out($"ASSIST {m}: after tap top ui = {e.UiMgr.UiQueue.Peek()?.Name} (want AdvMain)");
+				if (e.UiMgr.UiQueue.Peek() != e.AdvMain) e.Back();
+				_asMenu++; _asStep = 0; _asTime = 0; return true;
+		}
+		return true;
+	}
+	static Control FindClose(Wa2EngineMain e)
+	{
+		Control best = null; float bestY = -1;
+		foreach (var b in Wa2TouchAssist.Candidates()) { var y = b.GetGlobalRect().Position.Y; if (y > bestY) { bestY = y; best = b; } }
+		return best;   // the panel's Close is its lowest button
+	}
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;
 		var e = Wa2EngineMain.Engine;
+		if (AssistTick(delta, e)) return;
 		if (BacklogVoiceTick(delta, e)) return;
 		if (Args.Contains("--show-panel") && _done >= 2)
 		{
@@ -371,8 +420,9 @@ public static class Wa2Autoplay
 			_done++;
 			Out($"{k} saved");
 			_settled = 0; _idle = 0; _nudge = 0;
-			if (_done >= Lines && !GestureTest && !Args.Contains("--backlog-voice-test")) { Finish(0, "done"); return; }
+			if (_done >= Lines && !GestureTest && !Args.Contains("--backlog-voice-test") && !Args.Contains("--assist-test")) { Finish(0, "done"); return; }
 			if ((GestureTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
+			if (Args.Contains("--assist-test") && _done >= 2) return;
 			e.ClickAdv(true);
 			return;
 		}

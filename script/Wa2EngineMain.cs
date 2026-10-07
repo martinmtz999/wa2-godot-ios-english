@@ -496,6 +496,7 @@ public partial class Wa2EngineMain : Control
 		BootLog("Ready:start OS=" + OS.GetName());
 		Wa2Phone.LoadSettings();
 		Wa2Wide.Attach(this);
+		Wa2TouchAssist.Attach(this);
 		GameSav = new(this);
 		if (OS.GetName() == "Android")
 		{
