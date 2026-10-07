@@ -69,3 +69,7 @@ fb={
 "type": "vec3",
 "value": Vector3(0.5, 0.5, 0.5)
 }
+pano={
+"type": "vec4",
+"value": Vector4(0, 200, 440, 0)
+}

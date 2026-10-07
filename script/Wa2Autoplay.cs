@@ -404,6 +404,9 @@ public static class Wa2Autoplay
 			string key = $"{e.Script.ScriptName}_{e.CurMessageIdx}", k = key;
 			for (int j = 2; _keys.Contains(k); j++) k = $"{key}_{j}";
 			_keys.Add(k);
+			// `--char-left`: move every shown character to the left standing position (test aid)
+			if (Args.Contains("--char-left"))
+				foreach (var ch in e.Chars) if (ch != null && ch.Visible) { ch.SetCurOffset(new Vector2(288, 0)); ch.SetNextOffset(new Vector2(288, 0)); }
 			// `--import-slot=N`: rebuild a PC save by replay; save the port slot at the --skip-to line.
 			string slot = Arg("--import-slot=");
 			if (slot != null)

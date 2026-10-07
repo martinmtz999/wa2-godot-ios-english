@@ -640,6 +640,8 @@ public partial class Wa2EngineMain : Control
 			// GD.Print(Chars[i].GetNextOffset());
 			// CharGroup.AddChild(Chars[i]);
 		}
+		Wa2Panorama.Attach(this);
+
 		VideoPlayer.Finished += OnVideoFinished;
 		State = GameState.LOGO;
 		// GD.Print(Time.GetTicksMsec());

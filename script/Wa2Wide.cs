@@ -25,6 +25,18 @@ public partial class Wa2Wide : Node
 		sm.SetShaderParameter("outer", outer);
 	}
 	private static bool StripBlurFromArgs;
+	public static float StripWidth => _inst == null ? 0f : _inst._off.X;
+	private float _covered;
+	// The panorama fills this many px of each strip: the blur fill starts beyond it.
+	public static void SetCovered(float px)
+	{
+		if (_inst == null || Mathf.IsEqualApprox(px, _inst._covered)) return;
+		_inst._covered = px;
+		_inst.UpdateFillRect();
+		// snowflake ornaments fade out as the picture covers the strips
+		float a = 0.55f * Mathf.Clamp(1f - px / Mathf.Max(_inst._off.X * 0.6f, 1f), 0f, 1f);
+		foreach (var o in _inst._ornaments) o.Modulate = new Color(1, 1, 1, a);
+	}
 	public static float StripBlur = 0.025f;   // user: "less of a blur" (first look used 0.06)
 	private CanvasLayer _fillLayer, _railLayer;
 	private ColorRect _fill;
@@ -151,6 +163,13 @@ public partial class Wa2Wide : Node
 		// Auto-save on leaving the app (Wa2Quick) needs no button.
 	}
 
+	private void UpdateFillRect()
+	{
+		Vector2 vs = GetViewport().GetVisibleRect().Size;
+		var sm = (ShaderMaterial)_fill.Material;
+		float c = _covered;
+		sm.SetShaderParameter("center", new Vector4((_off.X - c) / vs.X, _off.Y / vs.Y, (1280 + 2 * c) / vs.X, 720 / vs.Y));
+	}
 	private void Layout()
 	{
 		Vector2 vs = GetViewport().GetVisibleRect().Size;
@@ -163,8 +182,8 @@ public partial class Wa2Wide : Node
 		_fill.Visible = bars;
 		_fill.Position = Vector2.Zero;
 		_fill.Size = vs;
+		UpdateFillRect();
 		var sm = (ShaderMaterial)_fill.Material;
-		sm.SetShaderParameter("center", new Vector4(_off.X / vs.X, _off.Y / vs.Y, 1280 / vs.X, 720 / vs.Y));
 		sm.SetShaderParameter("aspect", vs.X / vs.Y);
 		_wide = _off.X >= Btn * 0.75f;
 		foreach (var (bg, side) in _railBgs)

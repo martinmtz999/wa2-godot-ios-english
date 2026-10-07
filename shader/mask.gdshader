@@ -15,6 +15,11 @@ uniform bool center=false;
 uniform float cur_texture_div=1.0;
 uniform float next_texture_div=1.0;
 global uniform vec3 fb;
+// Panorama (Wa2Panorama): x = extra px per side E, y = untouched half-width c, z = ramp length L,
+// w = 1 when active. Character layers set prewarp: they are counter-warped so that after the
+// panorama stretch they keep their exact shape, centred where the stretch moves them.
+global uniform vec4 pano;
+uniform bool prewarp = false;
 varying vec2 cur_texture_size;
 varying vec2 mask_texture_size;
 varying vec2 next_texture_size;
@@ -51,10 +56,23 @@ vec4 get_color(sampler2D input_texture,vec2 input_size,vec2 uv,vec2 scale,vec2 o
 	vec4 bg_color=texture(input_texture,centered_uv);
 	return bg_color;
 }
+float pano_f(float x) {      // forward stretch, in 1280-wide px
+	float d = x - 640.0, ad = abs(d);
+	if (ad <= pano.y) return x;
+	float u = (ad - pano.y) / pano.z;
+	return 640.0 + sign(d) * (pano.y + pano.z * u + pano.x * u * u);
+}
+vec2 prewarp_uv(vec2 uv, vec2 offset) {
+	if (!prewarp || pano.w < 0.5 || pano.x <= 0.0) return uv;
+	float xv = uv.x * canvas_size.x;
+	float xc = canvas_size.x * 0.5 - offset.x;           // sprite centre (centred layout)
+	float xs = xc + (pano_f(xv) - pano_f(xc));            // rigid placement around the warped centre
+	return vec2(xs / canvas_size.x, uv.y);
+}
 void fragment() {
 	vec4 mask_color=texture(mask_texture,UV);
-	vec4 cur_color=get_color(cur_texture,cur_texture_size,UV,cur_scale,cur_offset);
-	vec4 next_color=get_color(next_texture,next_texture_size,UV,next_scale,next_offset);
+	vec4 cur_color=get_color(cur_texture,cur_texture_size,prewarp_uv(UV,cur_offset),cur_scale,cur_offset);
+	vec4 next_color=get_color(next_texture,next_texture_size,prewarp_uv(UV,next_offset),next_scale,next_offset);
 	if (next_color.a==0.0){
 		next_color=vec4(0.0);
 	}

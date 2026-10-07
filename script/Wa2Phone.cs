@@ -13,6 +13,8 @@ public partial class Wa2Phone : Control
 	public static readonly string[] FillNames = { "Deep", "Light", "Black" };
 	public static int TextIdx = 2, FillIdx = 0;
 	public static bool AutoHide = true;
+	public static int PanoIdx = 2;
+	public static readonly string[] PanoNames = { "Off", "Half", "Full" };
 	public static bool GuideSeen;
 	private static Wa2Phone _panel;
 	private readonly List<(Wa2Label lab, Func<bool> on)> _opts = new();
@@ -27,8 +29,10 @@ public partial class Wa2Phone : Control
 			FillIdx = Math.Clamp((int)c.GetValue("phone", "fill", 0), 0, FillNames.Length - 1);
 			GuideSeen = (bool)c.GetValue("phone", "guide_seen", false);
 			AutoHide = (bool)c.GetValue("phone", "autohide", true);
+			PanoIdx = Math.Clamp((int)c.GetValue("phone", "pano", 2), 0, 2);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
+		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]);
 	}
 	private static void Save()
 	{
@@ -37,6 +41,7 @@ public partial class Wa2Phone : Control
 		c.SetValue("phone", "fill", FillIdx);
 		c.SetValue("phone", "guide_seen", GuideSeen);
 		c.SetValue("phone", "autohide", AutoHide);
+		c.SetValue("phone", "pano", PanoIdx);
 		c.Save(Cfg);
 	}
 
@@ -59,7 +64,8 @@ public partial class Wa2Phone : Control
 		var e = Wa2EngineMain.Engine;
 		Position = Vector2.Zero; Size = new Vector2(1280, 720);
 		MouseFilter = MouseFilterEnum.Stop;
-		AddChild(new ColorRect { Color = new Color(0, 0, 0, 0.55f), Size = Size, MouseFilter = MouseFilterEnum.Ignore });
+		// backdrop wider than the 1280 game area so a widened (Fill screen) picture is dimmed too
+		AddChild(new ColorRect { Color = new Color(0, 0, 0, 0.55f), Position = new Vector2(-600, 0), Size = new Vector2(2480, 720), MouseFilter = MouseFilterEnum.Ignore });
 		var box = new Panel { Position = new Vector2(170, 46), Size = new Vector2(940, 628), MouseFilter = MouseFilterEnum.Ignore };
 		box.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
@@ -89,15 +95,17 @@ public partial class Wa2Phone : Control
 			Text(rows[i].g, 250, 128 + i * 38, 24, Cyan);
 			Text(rows[i].what, 450, 128 + i * 38, 24, new Color(1, 1, 1));
 		}
-		Text("Text size", 230, 372, 26, Cyan);
-		for (int i = 0; i < TextSizes.Length; i++) { int k = i; Option(TextNames[i], 450 + i * 150, 372, () => TextIdx == k, () => SetText(k)); }
-		Text("Side bars", 230, 432, 26, Cyan);
-		for (int i = 0; i < FillNames.Length; i++) { int k = i; Option(FillNames[i], 450 + i * 150, 432, () => FillIdx == k, () => SetFill(k)); }
-		Text("Buttons", 230, 492, 26, Cyan);
-		Option("Auto-hide", 450, 492, () => AutoHide, () => { AutoHide = true; Save(); });
-		Option("Always", 600, 492, () => !AutoHide, () => { AutoHide = false; Save(); });
-		Text("Auto-hide: tap a side bar to show the buttons.  Saves happen when you leave the app.", 230, 548, 20, Dim);
-		Option("Close", 590, 598, () => true, Close, 30);
+		Text("Text size", 230, 362, 26, Cyan);
+		for (int i = 0; i < TextSizes.Length; i++) { int k = i; Option(TextNames[i], 450 + i * 150, 362, () => TextIdx == k, () => SetText(k)); }
+		Text("Fill screen", 230, 414, 26, Cyan);
+		for (int i = 0; i < PanoNames.Length; i++) { int k = i; Option(PanoNames[i], 450 + i * 150, 414, () => PanoIdx == k, () => { PanoIdx = k; Save(); }); }
+		Text("Side bars", 230, 466, 26, Cyan);
+		for (int i = 0; i < FillNames.Length; i++) { int k = i; Option(FillNames[i], 450 + i * 150, 466, () => FillIdx == k, () => SetFill(k)); }
+		Text("Buttons", 230, 518, 26, Cyan);
+		Option("Auto-hide", 450, 518, () => AutoHide, () => { AutoHide = true; Save(); });
+		Option("Always", 600, 518, () => !AutoHide, () => { AutoHide = false; Save(); });
+		Text("Fill screen widens backgrounds only; characters and CGs keep their shape.", 230, 566, 20, Dim);
+		Option("Close", 590, 614, () => true, Close, 30);
 		RefreshOptions();
 	}
 
