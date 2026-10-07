@@ -25,6 +25,15 @@ public partial class Wa2SeAudio : Wa2Audio
     SetVolume(volume, time);
     Play();
   }
+  // Load without playing; the next PlaySound with the same id starts it.
+  public void Prepare(int id, bool loop)
+  {
+    Stop();
+    Loop = loop;
+    Id = id;
+    SetVolume(0, 0);
+    Stream = Wa2Resource.GetSeStream(id);
+  }
   public override void _Ready()
   {
     Finished += _OnFinished;

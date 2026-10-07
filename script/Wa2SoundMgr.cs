@@ -227,6 +227,11 @@ public partial class Wa2SoundMgr : Node
 		SeAudios[channel].PlaySound(id, loopFlag, time, volume);
 		_engine.SubtitleMgr.ListenSe(id, SeAudios[channel]);
 	}
+	public void PrepareSe(int channel, int id, bool loopFlag)
+	{
+		Wa2Trace.Log("se-load", channel, id, loopFlag ? 1 : 0, 0);
+		SeAudios[channel].Prepare(id, loopFlag);
+	}
 	// public void PlaySe(SeInfo seInfo)
 	// {
 	// 	PlaySe(seInfo.Channel, seInfo.Id, seInfo.Loop, seInfo.Time, seInfo.Volume);

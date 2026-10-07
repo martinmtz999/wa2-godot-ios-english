@@ -587,7 +587,15 @@ public class Wa2Func
 		// GD.Print(args.Count);
 		// GD.Print("循环播放:", args[3].Get());
 		// GD.Print("id:", args[1].Get());
-		GD.Print("SEP:",args[5].GetInt());
+		// 6th argument, from the PC's handler (WA2.exe 0x40f2d0): 0 = load and play, 1 = load only,
+		// 2 = start the sound loaded by 1. The script loads layered loops with 1, then starts them
+		// together with 2 so they stay in sync.
+		if (args[5].GetInt() == 1)
+		{
+			Wa2SoundMgr.Instance.PrepareSe(args[0].GetInt(), args[1].GetInt(), args[3].GetInt() != 0);
+			args.Clear();
+			return true;
+		}
 		Wa2SoundMgr.Instance.PlaySe(args[0].GetInt(), args[1].GetInt(), args[3].GetInt() != 0, args[2].GetInt() * _engine.FrameTime, args[4].GetInt());
 		args.Clear();
 		return true;

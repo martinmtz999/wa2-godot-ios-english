@@ -141,9 +141,38 @@ public class Wa2Resource
 		{
 			return null;
 		}
-		AudioStream wavStream = AudioStreamWav.LoadFromBuffer(buffer);
-		return wavStream;
+		AudioStream wavStream = buffer.Length > (4 << 20) ? FastPcmWav(buffer) : null;
+		return wavStream ?? AudioStreamWav.LoadFromBuffer(buffer);
 
+	}
+	// AudioStreamWav.LoadFromBuffer takes ~3 s for the largest ambient loops (53 MB). For plain 16-bit
+	// PCM without loop markers, hand Godot the samples directly instead; anything else returns null
+	// and uses the stock loader.
+	static AudioStreamWav FastPcmWav(byte[] b)
+	{
+		if (b.Length < 12 || BitConverter.ToUInt32(b, 0) != 0x46464952 || BitConverter.ToUInt32(b, 8) != 0x45564157)
+			return null;
+		int channels = 0, rate = 0, bits = 0, dataPos = -1, dataLen = 0;
+		for (int p = 12; p + 8 <= b.Length;)
+		{
+			uint id = BitConverter.ToUInt32(b, p);
+			int size = (int)Math.Min(BitConverter.ToUInt32(b, p + 4), (uint)(b.Length - p - 8));
+			if (id == 0x20746d66 && size >= 16) // "fmt "
+			{
+				if (BitConverter.ToUInt16(b, p + 8) != 1) return null;
+				channels = BitConverter.ToUInt16(b, p + 10);
+				rate = BitConverter.ToInt32(b, p + 12);
+				bits = BitConverter.ToUInt16(b, p + 22);
+			}
+			else if (id == 0x61746164) { dataPos = p + 8; dataLen = size; } // "data"
+			else if (id == 0x6c706d73) return null; // "smpl": loop points, leave to the stock loader
+			p += 8 + size + (size & 1);
+		}
+		if (dataPos < 0 || bits != 16 || channels < 1 || channels > 2 || rate <= 0)
+			return null;
+		byte[] pcm = new byte[dataLen & ~(channels * 2 - 1)];
+		Buffer.BlockCopy(b, dataPos, pcm, 0, pcm.Length);
+		return new AudioStreamWav { Format = AudioStreamWav.FormatEnum.Format16Bits, MixRate = rate, Stereo = channels == 2, Data = pcm };
 	}
 	public static Texture2D GetTvImage(int id)
 	{
