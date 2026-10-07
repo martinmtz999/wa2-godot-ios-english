@@ -104,7 +104,7 @@ public partial class Wa2Phone : Control
 		Text("Buttons", 230, 518, 26, Cyan);
 		Option("Auto-hide", 450, 518, () => AutoHide, () => { AutoHide = true; Save(); });
 		Option("Always", 600, 518, () => !AutoHide, () => { AutoHide = false; Save(); });
-		Text("Fill screen widens backgrounds only; characters and CGs keep their shape.", 230, 566, 20, Dim);
+		Text("Fill screen widens the scenery; CGs gently; characters keep their shape.", 230, 566, 20, Dim);
 		Option("Close", 590, 614, () => true, Close, 30);
 		RefreshOptions();
 	}
