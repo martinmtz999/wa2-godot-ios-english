@@ -100,16 +100,15 @@ public partial class Wa2Label : Node2D
 	}
 	// The English script is pre-wrapped at ~54 columns, mixed with deliberate breaks (poems, pauses).
 	// A break counts as automatic when the next word would not have fitted in 54 columns, or nearly
-	// (>= 50) and the line does not end a sentence. The page is wrapped again at `cols` only when that
-	// saves at least one line, and then as evenly as possible (no lone last word, never narrower than
-	// the PC's 54); otherwise the PC's own wrapping is kept. Pages built from several \\k segments and
-	// text with tags are left as they are, so text already shown never moves.
+	// (>= 50) and the line does not end a sentence; the rest is wrapped again by words at `cols`.
+	// Pages built from several \\k segments and text with tags are left as they are, so text already
+	// shown never moves.
 	public static string Rewrap(string s, int cols)
 	{
 		if (s.IndexOf('<') >= 0 || s.Contains("\\k")) return s;
 		var paras = new List<string>();
 		var sb = new System.Text.StringBuilder(s.Length);
-		int orig = 0, origLines = 1;
+		int orig = 0;
 		char last = ' ';
 		for (int i = 0; i < s.Length; i++)
 		{
@@ -123,7 +122,6 @@ public partial class Wa2Label : Node2D
 					bool sentenceEnd = ".!?\"'…)」』～~".IndexOf(last) >= 0;
 					i++;
 					orig = 0;
-					origLines++;
 					if (v >= 54 || (v >= 50 && !sentenceEnd)) { sb.Append(' '); last = ' '; }
 					else { paras.Add(sb.ToString()); sb.Clear(); }
 					continue;
@@ -136,24 +134,24 @@ public partial class Wa2Label : Node2D
 			if (ch >= 0x20 && ch != '^' && ch != '`' && ch != '~') { orig += Cols(ch); last = ch; }
 		}
 		paras.Add(sb.ToString());
-		int newLines = 0;
-		foreach (var p in paras) newLines += Wrap(p, cols, null);
-		if (newLines >= origLines) return s;
 		var outp = new System.Text.StringBuilder(s.Length + 8);
 		for (int k = 0; k < paras.Count; k++)
 		{
 			string p = paras[k];
-			int n = Wrap(p, cols, null), w = cols;
-			while (w > 54 && Wrap(p, w - 1, null) <= n) w--;
+			// Fill the box; if that leaves a short last line (a lone word or two), narrow the lines a
+			// little (at most 8 columns) while the line count stays the same.
+			int n = Wrap(p, cols, null, out int lastCol), w = cols;
+			while (n > 1 && lastCol < cols / 4 && w > cols - 8 && Wrap(p, w - 1, null, out int lc) == n) { w--; lastCol = lc; }
 			if (k > 0) outp.Append("\\n");
-			Wrap(p, w, outp);
+			Wrap(p, w, outp, out _);
 		}
 		return outp.ToString();
 	}
 	// Greedy word wrap of one paragraph at `cols`; appends to `o` when given; returns the line count.
-	private static int Wrap(string p, int cols, System.Text.StringBuilder o)
+	private static int Wrap(string p, int cols, System.Text.StringBuilder o, out int col)
 	{
-		int col = 0, lines = 1;
+		int lines = 1;
+		col = 0;
 		for (int i = 0; i < p.Length; i++)
 		{
 			char ch = p[i];

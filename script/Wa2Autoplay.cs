@@ -18,6 +18,8 @@ public static class Wa2Autoplay
 	public static bool Enabled => Lines > 0;
 
 	static int _done;
+	static readonly int FilmFrames = int.TryParse(Arg("--film="), out int ff) ? ff : 0;
+	static int _film; static string _filmKey;
 	static double _settled, _idle, _nudge;
 	static readonly HashSet<string> _keys = new();
 
@@ -379,6 +381,12 @@ public static class Wa2Autoplay
 			Save("panel"); Finish(0, "panel saved"); return;
 		}
 		if (GestureTick(delta, e)) return;
+		// `--film=N`: after each click, save every 2nd frame for N frames (to see transitions).
+		if (_film > 0)
+		{
+			if (_film % 2 == 0) Save($"{_filmKey}_f{(FilmFrames - _film) / 2:D3}");
+			_film--;
+		}
 		if (e.State != Wa2EngineMain.GameState.GAME || e.Script == null) return;
 		var adv = e.AdvMain;
 		_idle += delta;
@@ -427,6 +435,7 @@ public static class Wa2Autoplay
 			if ((GestureTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
 			if (Args.Contains("--assist-test") && _done >= 2) return;
 			e.ClickAdv(true);
+			if (FilmFrames > 0) { _film = FilmFrames; _filmKey = k; }
 			return;
 		}
 		_settled = 0;

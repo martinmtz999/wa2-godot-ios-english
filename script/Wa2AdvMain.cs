@@ -132,10 +132,10 @@ public partial class Wa2AdvMain : Control
 		MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f), k);
 		// Wide phones: the box reaches into the side bars and the text gets longer lines (re-wrapped
 		// by words, Wa2Label.WrapCols), so long pages need fewer lines. extra = added width in px.
-		float extra = WideDrop > 0 ? Mathf.Min(Wa2Wide.StripWidth, 160f) * 2 * 0.85f : 0f;
+		float extra = WideDrop > 0 ? Mathf.Min(Wa2Wide.StripWidth, 160f) * 2 * 0.6f : 0f;
 		int adv = TextLabel.FontSize / 2 + TextLabel.LineSpacing;
 		int addCols = Mathf.FloorToInt(extra * 0.96f / adv);
-		TextLabel.WrapCols = addCols > 0 ? 54 + addCols : 0;
+		TextLabel.WrapCols = addCols > 0 ? 55 + addCols : 0;
 		if (addCols > 0)
 		{
 			TextLabel.MaxChars = TextLabel.WrapCols / 2 + 2;
