@@ -122,7 +122,9 @@ public partial class Wa2AdvMain : Control
 	public void AlignText()
 	{
 		if (_alignBase is not { } b || TextLabel.WrapCols <= 0) return;
-		float shift = Mathf.Clamp((TextLabel.WrapCols - TextLabel.ShownMaxCols) * b.adv / 2f, 0f, b.maxShift);
+		float free = Mathf.Max((TextLabel.WrapCols - TextLabel.ShownMaxCols) * b.adv / 2f, 0f);
+		// Text Position: like PC (at most back to the PC's start) or centred in the box
+		float shift = Wa2Phone.CenterText ? free : Mathf.Min(free, b.maxShift);
 		TextLabel.Position = new Vector2(b.text + shift, TextLabel.Position.Y);
 		NameLabel.Position = new Vector2(b.name + shift, NameLabel.Position.Y);
 	}

@@ -380,6 +380,29 @@ public static class Wa2Autoplay
 			if (_gTime < 1.5) return;
 			Save("panel"); Finish(0, "panel saved"); return;
 		}
+		// `--show-options`: open the original Options menu and save each of its three pages.
+		if (Args.Any(a => a.StartsWith("--show-options")) && _done >= 2)
+		{
+			_gTime += delta;
+			bool phone = Args.Contains("--show-options=4");
+			if (_gStep < 0) { if (_gTime < 1.0) return; if (phone) e.UiMgr.OpenPhoneOptions(); else e.UiMgr.OpenOptionsMenu(); _gStep = phone ? 2 : 0; _gTime = 0; return; }
+			if (_gTime < 2.0) return;
+			Save($"options{_gStep}");
+			_gStep++; _gTime = 0;
+			if (phone && _gStep == 3)
+			{
+				// tap "Centered" (Text Position) on OPTION 4 and check the setting and the Details box
+				var page = e.UiMgr.OptionsMenu.PageList.GetChild(Wa2PhoneOptions.PageIndex);
+				var btns = page.GetChildren().OfType<Wa2Button>().ToList();
+				btns[11].EmitSignal(BaseButton.SignalName.ButtonDown);
+				Out($"OPTION4 tap Centered -> CenterText = {Wa2Phone.CenterText} (want True); lit {btns[11].ButtonPressed}, Like PC lit {btns[10].ButtonPressed}");
+				return;
+			}
+			if (phone && _gStep == 4) { Wa2Phone.SetCenter(false); Finish(0, "options saved"); return; }
+			if (_gStep >= 3) { Finish(0, "options saved"); return; }
+			e.UiMgr.OptionsMenu.UpdatePage(_gStep);
+			return;
+		}
 		if (GestureTick(delta, e)) return;
 		// `--film=N`: after each click, save every 2nd frame for N frames (to see transitions).
 		if (_film > 0)

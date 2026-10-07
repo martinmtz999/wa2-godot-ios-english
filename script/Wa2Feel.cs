@@ -47,7 +47,7 @@ public static class Wa2Feel
 		_last = now;
 		Fired++;
 		Wa2Trace.Log("haptic", id, h.ms, h.amp);
-		if (OS.GetName() == "iOS") Input.VibrateHandheld(h.ms, h.amp);
+		if (OS.GetName() == "iOS" && Wa2Phone.Haptics) Input.VibrateHandheld(h.ms, h.amp);
 	}
 
 	// iCloud/iTunes backup: exclude the 9+ GB of game files (and the shader cache) so only saves are

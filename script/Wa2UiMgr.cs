@@ -88,6 +88,16 @@ public partial class Wa2UiMgr : Control
 			if (_hidAdv.Remove(ui)) AdvMain.Show();
 		}
 	}
+	// The "?" button: Options opened on OPTION 4 (phone settings).
+	public void OpenPhoneOptions()
+	{
+		OpenOptionsMenu();
+		int p = Wa2PhoneOptions.PageIndex;
+		if (p < 0) return;
+		OptionsMenu.UpdatePage(p);
+		if (OptionsMenu.OptionButtonList.GetChildCount() > p) OptionsMenu.OptionButtonList.GetChild<Wa2Button>(p).ButtonPressed = true;
+		Wa2PhoneOptions.Refresh();
+	}
 	public void OpenOptionsMenu()
 	{
 		HideAdvFor(OptionsMenu);

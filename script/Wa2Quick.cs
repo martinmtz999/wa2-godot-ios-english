@@ -65,6 +65,6 @@ public static class Wa2Quick
 
 	public static void Haptic()
 	{
-		if (OS.GetName() == "iOS") Input.VibrateHandheld(12, 0.35f);
+		if (OS.GetName() == "iOS" && Wa2Phone.Haptics) Input.VibrateHandheld(12, 0.35f);
 	}
 }

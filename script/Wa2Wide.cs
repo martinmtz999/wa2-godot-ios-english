@@ -129,7 +129,9 @@ public partial class Wa2Wide : Node
 		_built = true;
 		var adv = _e.AdvMain;
 		var sheet = GD.Load<Texture2D>("res://assets/grp/sys_00010.png");
-		AtlasTexture Icon(int col, int row) => new() { Atlas = sheet, Region = new Rect2(col * 40, row * 40, 40, 40) };
+		// Cells are 40x40 with the icon in rows 2-27 and a mirrored reflection below (rows 29-39); the
+		// side bars show the icon only (user: no reflections).
+		AtlasTexture Icon(int col, int row) => new() { Atlas = sheet, Region = new Rect2(col * 40, row * 40, 40, 29) };
 		void Take(TextureButton b, int col, System.Func<bool> active = null)
 		{
 			b.GetParent()?.RemoveChild(b);
@@ -156,10 +158,10 @@ public partial class Wa2Wide : Node
 		Take(adv.OffButton, 8);
 		// '?' built from the PC icon sheet by tools/make-help-icon.py (rows: idle, active, pressed)
 		var helpTex = GD.Load<Texture2D>("res://assets/grp/sys_help.png");
-		AtlasTexture H(int row) => new() { Atlas = helpTex, Region = new Rect2(0, row * 40, 40, 40) };
+		AtlasTexture H(int row) => new() { Atlas = helpTex, Region = new Rect2(0, row * 40, 40, 29) };
 		_help = new TextureButton { TextureNormal = H(0), TextureHover = H(0), TexturePressed = H(2), IgnoreTextureSize = true,
 			StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered, Size = new Vector2(Btn, Btn), FocusMode = Control.FocusModeEnum.None };
-		_help.ButtonDown += () => { Wa2Quick.Haptic(); Wa2Phone.Open(_e); };
+		_help.ButtonDown += () => { Wa2Quick.Haptic(); _e.UiMgr.OpenPhoneOptions(); };
 		_rails.AddChild(_help);
 		// Quick save / quick load stay hidden: the user does not use them and they crowded the strip.
 		// Auto-save on leaving the app (Wa2Quick) needs no button.
@@ -282,7 +284,7 @@ public partial class Wa2Wide : Node
 		{
 			int row = active != null && active() ? 1 : 0;
 			if (btn.TextureNormal is AtlasTexture at && (int)(at.Region.Position.Y / 40) != row)
-				at.Region = new Rect2(col * 40, row * 40, 40, 40);
+				at.Region = new Rect2(col * 40, row * 40, 40, 29);
 		}
 	}
 

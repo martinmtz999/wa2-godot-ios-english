@@ -160,10 +160,11 @@ public partial class OptionsMenu : BasePage
         UpdatePage(idx);
       };
     }
+    Wa2PhoneOptions.Attach(this);
   }
   public void UpdatePage(int idx)
   {
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < PageList.GetChildCount(); i++)
     {
       if (i == idx)
       {

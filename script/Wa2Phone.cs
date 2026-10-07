@@ -2,9 +2,9 @@ using Godot;
 using System;
 using System.Collections.Generic;
 
-// Phone settings and the gesture guide: a panel in the game's own look (its letters via Wa2Label,
-// the text box's cyan ring colour, its snowflake art). Opens once on first play and from the "?"
-// button in the left side strip. Settings live in user://phone.cfg.
+// Phone settings (user://phone.cfg; shown as Options -> OPTION 4, Wa2PhoneOptions) and the gesture
+// guide: a panel in the game's own look (its letters via Wa2Label, the text box's cyan ring colour,
+// its snowflake art). The guide opens once on first play and from OPTION 4 -> Gesture Guide.
 public partial class Wa2Phone : Control
 {
 	private const string Cfg = "user://phone.cfg";
@@ -16,6 +16,8 @@ public partial class Wa2Phone : Control
 	public static int PanoIdx = 2;
 	public static readonly string[] PanoNames = { "Off", "Half", "Full" };
 	public static bool GuideSeen;
+	public static bool CenterText;          // Text Position: false = like PC, true = centred
+	public static bool Haptics = true;
 	private static Wa2Phone _panel;
 	private readonly List<(Wa2Label lab, Func<bool> on)> _opts = new();
 	private static readonly Color Cyan = new(0.55f, 0.88f, 1f), Dim = new(0.72f, 0.76f, 0.8f);
@@ -30,13 +32,17 @@ public partial class Wa2Phone : Control
 			GuideSeen = (bool)c.GetValue("phone", "guide_seen", false);
 			AutoHide = (bool)c.GetValue("phone", "autohide", true);
 			PanoIdx = Math.Clamp((int)c.GetValue("phone", "pano", 2), 0, 2);
+			CenterText = (bool)c.GetValue("phone", "center", false);
+			Haptics = (bool)c.GetValue("phone", "haptics", true);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
 		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]);
 	}
-	private static void Save()
+	public static void Save()
 	{
 		var c = new ConfigFile();
+		c.SetValue("phone", "center", CenterText);
+		c.SetValue("phone", "haptics", Haptics);
 		c.SetValue("phone", "text", TextIdx);
 		c.SetValue("phone", "fill", FillIdx);
 		c.SetValue("phone", "guide_seen", GuideSeen);
@@ -66,7 +72,7 @@ public partial class Wa2Phone : Control
 		MouseFilter = MouseFilterEnum.Stop;
 		// backdrop wider than the 1280 game area so a widened (Fill screen) picture is dimmed too
 		AddChild(new ColorRect { Color = new Color(0, 0, 0, 0.55f), Position = new Vector2(-600, 0), Size = new Vector2(2480, 720), MouseFilter = MouseFilterEnum.Ignore });
-		var box = new Panel { Position = new Vector2(170, 46), Size = new Vector2(940, 628), MouseFilter = MouseFilterEnum.Ignore };
+		var box = new Panel { Position = new Vector2(170, 46), Size = new Vector2(940, 500), MouseFilter = MouseFilterEnum.Ignore };
 		box.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
 			BgColor = new Color(0.02f, 0.10f, 0.14f, 0.93f), BorderColor = new Color(Cyan, 0.85f),
@@ -95,17 +101,8 @@ public partial class Wa2Phone : Control
 			Text(rows[i].g, 250, 128 + i * 38, 24, Cyan);
 			Text(rows[i].what, 450, 128 + i * 38, 24, new Color(1, 1, 1));
 		}
-		Text("Text size", 230, 362, 26, Cyan);
-		for (int i = 0; i < TextSizes.Length; i++) { int k = i; Option(TextNames[i], 450 + i * 150, 362, () => TextIdx == k, () => SetText(k)); }
-		Text("Fill screen", 230, 414, 26, Cyan);
-		for (int i = 0; i < PanoNames.Length; i++) { int k = i; Option(PanoNames[i], 450 + i * 150, 414, () => PanoIdx == k, () => { PanoIdx = k; Save(); }); }
-		Text("Side bars", 230, 466, 26, Cyan);
-		for (int i = 0; i < FillNames.Length; i++) { int k = i; Option(FillNames[i], 450 + i * 150, 466, () => FillIdx == k, () => SetFill(k)); }
-		Text("Buttons", 230, 518, 26, Cyan);
-		Option("Auto-hide", 450, 518, () => AutoHide, () => { AutoHide = true; Save(); });
-		Option("Always", 600, 518, () => !AutoHide, () => { AutoHide = false; Save(); });
-		Text("Fill screen widens the scenery; CGs gently; characters keep their shape.", 230, 566, 20, Dim);
-		Option("Close", 590, 614, () => true, Close, 30);
+		Text("Settings: Options -> OPTION 4, or the ? button.", 230, 400, 22, Dim);
+		Option("Close", 590, 480, () => true, Close, 30);
 		RefreshOptions();
 	}
 
@@ -130,13 +127,18 @@ public partial class Wa2Phone : Control
 	{
 		foreach (var (lab, on) in _opts) { lab.Color = on() ? Cyan : Dim; lab.QueueRedraw(); lab.SetText(lab.Text); }
 	}
-	private static void SetText(int k)
+	public static void SetPano(int k) { PanoIdx = k; Save(); }
+	public static void SetCenter(bool on) { CenterText = on; Save(); Wa2EngineMain.Engine.AdvMain.ApplyTextScale(); }
+	public static void SetAutoHide(bool on) { AutoHide = on; Save(); }
+	public static void SetHaptics(bool on) { Haptics = on; Save(); }
+	public static void OpenGuide(Wa2EngineMain e) => Open(e);
+	public static void SetText(int k)
 	{
 		TextIdx = k; Save();
 		Wa2AdvMain.TextScale = TextSizes[k];
 		Wa2EngineMain.Engine.AdvMain.ApplyTextScale();
 	}
-	private static void SetFill(int k) { FillIdx = k; Save(); Wa2Wide.ApplyFill(); }
+	public static void SetFill(int k) { FillIdx = k; Save(); Wa2Wide.ApplyFill(); }
 	private void Close()
 	{
 		GuideSeen = true; Save();
