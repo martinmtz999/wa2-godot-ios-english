@@ -162,7 +162,11 @@ public partial class TodokanaiSubtitles : Node2D
 		Line line = _playing.Lines[_lineIndex];
 		ulong ticks = Time.GetTicksMsec() - _startTicks;
 		if (ticks > line.Start && ticks < line.End)
+		{
+			// The layer spans the whole (wider) screen; centre on the game area like the PC.
+			DrawSetTransform(Wa2Wide.GameOffset);
 			RenderText(line.Text);
+		}
 	}
 
 	private static int XOffset(string s, int from)

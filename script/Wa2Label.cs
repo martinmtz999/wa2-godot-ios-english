@@ -64,6 +64,113 @@ public partial class Wa2Label : Node2D
 	public int MaxLines = 4;
 	[Export]
 	public int MaxChars = 28;
+	// > 0: re-wrap the English text by words at this many half-width columns (wide phones give the
+	// text box more width). The stored Text keeps the original line breaks (saves, backlog).
+	public int WrapCols = 0;
+	private string _shownFor, _shown;
+	private int _shownCols;
+	private string Shown
+	{
+		get
+		{
+			if (WrapCols <= 0 || Text == null) return Text;
+			if (!ReferenceEquals(_shownFor, Text) || _shownCols != WrapCols)
+			{
+				_shown = Rewrap(Text, WrapCols);
+				_shownFor = Text;
+				_shownCols = WrapCols;
+			}
+			return _shown;
+		}
+	}
+	// Width in half-width columns of one character (ASCII 1, anything else 2, as drawn).
+	private static int Cols(char ch) => ch < 0x80 ? 1 : 2;
+	// Visible width of the word starting at i (up to a space, line break or end); skips markup.
+	private static int WordWidth(string s, int i)
+	{
+		int w = 0;
+		while (i < s.Length && s[i] != ' ')
+		{
+			if (s[i] == '\\') { if (i + 1 < s.Length && s[i + 1] == 'n') break; i += 2; continue; }
+			if (s[i] < 0x20 || s[i] == '^' || s[i] == '`' || s[i] == '~') { i++; continue; }
+			w += Cols(s[i]);
+			i++;
+		}
+		return w;
+	}
+	// The English script is pre-wrapped at ~54 columns, mixed with deliberate breaks (poems, pauses).
+	// A break counts as automatic when the next word would not have fitted in 54 columns, or nearly
+	// (>= 50) and the line does not end a sentence. The page is wrapped again at `cols` only when that
+	// saves at least one line, and then as evenly as possible (no lone last word, never narrower than
+	// the PC's 54); otherwise the PC's own wrapping is kept. Pages built from several \\k segments and
+	// text with tags are left as they are, so text already shown never moves.
+	public static string Rewrap(string s, int cols)
+	{
+		if (s.IndexOf('<') >= 0 || s.Contains("\\k")) return s;
+		var paras = new List<string>();
+		var sb = new System.Text.StringBuilder(s.Length);
+		int orig = 0, origLines = 1;
+		char last = ' ';
+		for (int i = 0; i < s.Length; i++)
+		{
+			char ch = s[i];
+			if (ch == '\\' && i + 1 < s.Length)
+			{
+				if (s[i + 1] == 'n')
+				{
+					int next = WordWidth(s, i + 2);
+					int v = next == 0 ? 0 : orig + 1 + next;
+					bool sentenceEnd = ".!?\"'…)」』～~".IndexOf(last) >= 0;
+					i++;
+					orig = 0;
+					origLines++;
+					if (v >= 54 || (v >= 50 && !sentenceEnd)) { sb.Append(' '); last = ' '; }
+					else { paras.Add(sb.ToString()); sb.Clear(); }
+					continue;
+				}
+				sb.Append(ch).Append(s[i + 1]);
+				i++;
+				continue;
+			}
+			sb.Append(ch);
+			if (ch >= 0x20 && ch != '^' && ch != '`' && ch != '~') { orig += Cols(ch); last = ch; }
+		}
+		paras.Add(sb.ToString());
+		int newLines = 0;
+		foreach (var p in paras) newLines += Wrap(p, cols, null);
+		if (newLines >= origLines) return s;
+		var outp = new System.Text.StringBuilder(s.Length + 8);
+		for (int k = 0; k < paras.Count; k++)
+		{
+			string p = paras[k];
+			int n = Wrap(p, cols, null), w = cols;
+			while (w > 54 && Wrap(p, w - 1, null) <= n) w--;
+			if (k > 0) outp.Append("\\n");
+			Wrap(p, w, outp);
+		}
+		return outp.ToString();
+	}
+	// Greedy word wrap of one paragraph at `cols`; appends to `o` when given; returns the line count.
+	private static int Wrap(string p, int cols, System.Text.StringBuilder o)
+	{
+		int col = 0, lines = 1;
+		for (int i = 0; i < p.Length; i++)
+		{
+			char ch = p[i];
+			if (ch == ' ')
+			{
+				int next = WordWidth(p, i + 1);
+				if (col > 0 && next > 0 && col + 1 + next > cols) { o?.Append("\\n"); col = 0; lines++; continue; }
+				o?.Append(' ');
+				col++;
+				continue;
+			}
+			if (ch == '\\' && i + 1 < p.Length) { o?.Append(ch).Append(p[i + 1]); i++; continue; }
+			o?.Append(ch);
+			if (ch >= 0x20 && ch != '^' && ch != '`' && ch != '~') col += Cols(ch);
+		}
+		return lines;
+	}
 	// [Export]
 	// public string EllipsisChar = "…";
 	[Export]
@@ -164,6 +271,7 @@ public partial class Wa2Label : Node2D
 		int lastDrawX = 0;
 		bool endedWithBreak = false;
 		TextParseResult r = new();
+		string Text = Shown;
 		// int drawX = 0;
 		// int drawY = 0;
 		for (int i = 0; i < Text.Length; i++)

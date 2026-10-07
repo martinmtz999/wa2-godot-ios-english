@@ -114,6 +114,7 @@ public partial class Wa2AdvMain : Control
 	// Wide screens move the toolbar into the side strips (Wa2Wide), freeing the bottom of the box:
 	// the box, name and text then sit this much lower. Set by Wa2Wide.
 	public static float WideDrop = 0;
+	private Vector2? _indPos;
 	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704 + WideDrop) + (p - new Vector2(640, 704)) * k;
 	public void ApplyTextScale()
 	{
@@ -129,6 +130,29 @@ public partial class Wa2AdvMain : Control
 		// (opaque part 1061px wide x 1.2 = 1273 of 1280); scaled uniformly it ran off both sides.
 		MessageBox.PivotOffset = new Vector2(624, 208);
 		MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f), k);
+		// Wide phones: the box reaches into the side bars and the text gets longer lines (re-wrapped
+		// by words, Wa2Label.WrapCols), so long pages need fewer lines. extra = added width in px.
+		float extra = WideDrop > 0 ? Mathf.Min(Wa2Wide.StripWidth, 160f) * 2 * 0.85f : 0f;
+		int adv = TextLabel.FontSize / 2 + TextLabel.LineSpacing;
+		int addCols = Mathf.FloorToInt(extra * 0.96f / adv);
+		TextLabel.WrapCols = addCols > 0 ? 54 + addCols : 0;
+		if (addCols > 0)
+		{
+			TextLabel.MaxChars = TextLabel.WrapCols / 2 + 2;
+			float dx = addCols * adv / 2f;
+			TextLabel.Position -= new Vector2(dx, 0);
+			NameLabel.Position -= new Vector2(dx, 0);
+			MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f) * (1 + extra / 1273f), k);
+		}
+		else TextLabel.MaxChars = 28;
+		// Read / Auto / Skip indicators (bottom-left, 120x40): with the longer lines they would sit on
+		// the text, so on wide phones they go to the bottom of the left side bar.
+		var ind = GetNodeOrNull<Control>("HBoxContainer2");
+		if (ind != null)
+		{
+			_indPos ??= ind.Position;
+			ind.Position = addCols > 0 ? new Vector2(-Wa2Wide.StripWidth / 2 - 60, _indPos.Value.Y) : _indPos.Value;
+		}
 		MessageBox.Position = new Vector2(16, 496 + WideDrop);
 		// Toolbar: slightly larger for touch when the text is enlarged, about its bottom-right corner.
 		var bar = GetNodeOrNull<Control>("HBoxContainer");

@@ -26,6 +26,8 @@ public partial class Wa2Wide : Node
 	}
 	private static bool StripBlurFromArgs;
 	public static float StripWidth => _inst == null ? 0f : _inst._off.X;
+	// Top-left of the 1280x720 game area on screen, for layers drawn outside the engine node.
+	public static Vector2 GameOffset => _inst == null ? Vector2.Zero : _inst._off;
 	private float _covered;
 	// The panorama fills this many px of each strip: the blur fill starts beyond it.
 	public static void SetCovered(float px)
