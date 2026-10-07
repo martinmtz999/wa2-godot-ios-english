@@ -115,6 +115,17 @@ public partial class Wa2AdvMain : Control
 	// the box, name and text then sit this much lower. Set by Wa2Wide.
 	public static float WideDrop = 0;
 	private Vector2? _indPos;
+	private (float text, float name, float maxShift, int adv)? _alignBase;
+	// Wide text box: centre each page's text block in the box (lines stay left-aligned). A page of
+	// full-width lines starts at the box's left margin; shorter pages move right, at most back to
+	// the PC's own starting position.
+	public void AlignText()
+	{
+		if (_alignBase is not { } b || TextLabel.WrapCols <= 0) return;
+		float shift = Mathf.Clamp((TextLabel.WrapCols - TextLabel.ShownMaxCols) * b.adv / 2f, 0f, b.maxShift);
+		TextLabel.Position = new Vector2(b.text + shift, TextLabel.Position.Y);
+		NameLabel.Position = new Vector2(b.name + shift, NameLabel.Position.Y);
+	}
 	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704 + WideDrop) + (p - new Vector2(640, 704)) * k;
 	public void ApplyTextScale()
 	{
@@ -142,9 +153,10 @@ public partial class Wa2AdvMain : Control
 			float dx = addCols * adv / 2f;
 			TextLabel.Position -= new Vector2(dx, 0);
 			NameLabel.Position -= new Vector2(dx, 0);
+			_alignBase = (TextLabel.Position.X, NameLabel.Position.X, dx, adv);
 			MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f) * (1 + extra / 1273f), k);
 		}
-		else TextLabel.MaxChars = 28;
+		else { TextLabel.MaxChars = 28; _alignBase = null; }
 		// Read / Auto / Skip indicators (bottom-left, 120x40): with the longer lines they would sit on
 		// the text, so on wide phones they go to the bottom of the left side bar.
 		var ind = GetNodeOrNull<Control>("HBoxContainer2");
@@ -162,6 +174,7 @@ public partial class Wa2AdvMain : Control
 			bar.PivotOffset = new Vector2(bar.Size.X, 48);
 			bar.Scale = new Vector2(b, b);
 		}
+		AlignText();
 	}
 	public void Init(Wa2EngineMain e)
 	{
@@ -451,6 +464,7 @@ public partial class Wa2AdvMain : Control
 	}
 	public void ShowText(bool fade = true)
 	{
+		AlignText();
 
 
 		// ClearText();

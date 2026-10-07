@@ -83,6 +83,26 @@ public partial class Wa2Label : Node2D
 			return _shown;
 		}
 	}
+	// Width in columns of the longest shown line; 55 (the PC's column) for text that is not re-wrapped,
+	// so a page that grows by \\k segments never moves.
+	public int ShownMaxCols
+	{
+		get
+		{
+			string t = Shown;
+			if (t == null || ReferenceEquals(t, Text)) return 55;
+			int max = 0, col = 0;
+			for (int i = 0; i < t.Length; i++)
+			{
+				char ch = t[i];
+				if (ch == '\\' && i + 1 < t.Length) { if (t[i + 1] == 'n') col = 0; i++; continue; }
+				if (ch < 0x20 || ch == '^' || ch == '`' || ch == '~') continue;
+				col += Cols(ch);
+				if (col > max) max = col;
+			}
+			return max;
+		}
+	}
 	// Width in half-width columns of one character (ASCII 1, anything else 2, as drawn).
 	private static int Cols(char ch) => ch < 0x80 ? 1 : 2;
 	// Visible width of the word starting at i (up to a space, line break or end); skips markup.
