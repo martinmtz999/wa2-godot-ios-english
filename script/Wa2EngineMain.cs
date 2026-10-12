@@ -462,6 +462,15 @@ public partial class Wa2EngineMain : Control
 			Wa2Quick.AutoSave(this);
 			SysSav?.Flush();   // read marks are written byte by byte; don't lose them if iOS closes the app
 		}
+		// Leaving the app (iOS app switcher, home swipe, a call): the system gesture starts as a touch
+		// in the game and the lift may never arrive, so a "held" finger or Skip button kept skipping
+		// after returning (user report, 2026-10-11). Forget the touch and stop Skip; a tap on return
+		// is then just a tap. Auto mode is left as it was.
+		if (what == NotificationApplicationPaused || what == NotificationApplicationFocusOut)
+		{
+			ForgetTouch();
+			StopSkip();
+		}
 	}
 	public void Back()
 	{
@@ -1125,6 +1134,12 @@ public void ClickAdv(bool click = false)
 						_twoFinger = false;
 						IsPressed = true;
 					}
+					else if (st.Index == 0 && (st.Canceled || !IsPressed))
+					{
+						// iOS took the touch over (system gesture), or the lift of a touch already
+						// forgotten (app switch) or begun before the story screen: not a tap, hold or swipe.
+						ForgetTouch();
+					}
 					else if (st.Index == 0)
 					{
 						bool longPress = Prefs.GetConfig("checkskip") == 1 && PressedTime >= 0.6f;
@@ -1166,6 +1181,16 @@ public void ClickAdv(bool click = false)
 	public void ClickRailTap() => Tap();
 	private ulong _touchStartMs;
 	private bool _touchMoved, _twoFinger;
+	// Drop the current touch without acting on it: a late lift then counts as a moved finger (ignored).
+	public void ForgetTouch()
+	{
+		IsPressed = false;
+		PressedTime = 0.0;
+		Skipping = false;
+		_touchMoved = true;
+		_twoFinger = false;
+		TouchFromRail = false;
+	}
 	private bool AdvActive => AdvMain.Visible && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && !VideoPlayer.IsPlaying();
 	private void OnTouchRelease(Vector2 pos, bool longPress)
 	{

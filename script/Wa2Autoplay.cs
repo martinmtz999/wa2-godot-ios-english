@@ -388,6 +388,87 @@ public static class Wa2Autoplay
 		return best;   // the panel's Close is its lowest button
 	}
 
+	// `--switch-test`: leaving the app mid-touch must not leave the game skipping (user report
+	// 2026-10-11). After 3 lines: A) Skip button held, app switch -> skip off, no lines advance;
+	// B) finger held with long-press skip on, app switch -> not skipping, the late lift is ignored;
+	// C) a held touch that iOS cancels does not toggle Auto; D) control: a normal hold + lift still does.
+	static readonly bool SwitchTest = Args.Contains("--switch-test");
+	static int _swStep = -1, _swIdx; static double _swTime;
+	static Vector2 SwPos(Wa2EngineMain e) => e.GetViewport().GetFinalTransform() * new Vector2(640, 300);
+	static void AppSwitch(Wa2EngineMain e)
+	{
+		e.Notification((int)Node.NotificationApplicationFocusOut);
+		e.Notification((int)Node.NotificationApplicationPaused);
+	}
+	static bool SwitchTick(double delta, Wa2EngineMain e)
+	{
+		if (!SwitchTest || _done < 3) return false;
+		if (_swStep < 0) { _swStep = 0; _swTime = 0; e.Prefs.SetConfig("msg_cut_optin", 1); }   // Skip Mode: All (scratch profile)
+		_swTime += delta;
+		switch (_swStep)
+		{
+			case 0:
+				if (_swTime < 1.0) return true;
+				e.AdvMain.OnSkipPress();                     // finger down on Skip, never lifted
+				_swStep = 1; _swTime = 0; return true;
+			case 1:
+				if (_swTime < 0.3) return true;
+				Out($"SWITCH A: holding Skip -> SkipMode {e.SkipMode} (want True)");
+				AppSwitch(e); _swIdx = e.CurMessageIdx;
+				Out($"SWITCH A: after app switch SkipMode {e.SkipMode} Skipping {e.Skipping} (want False False)");
+				_swStep = 20; _swTime = 0; return true;
+			case 20:
+				if (_swTime < 0.3) return true;              // a line the skip had already requested may still land
+				Out($"SWITCH A: lines in the first 0.3 s: {e.CurMessageIdx - _swIdx} (at most 1)");
+				_swIdx = e.CurMessageIdx;
+				_swStep = 2; _swTime = 0; return true;
+			case 2:
+				if (_swTime < 1.5) return true;
+				Out($"SWITCH A: lines advanced in the next 1.5 s: {e.CurMessageIdx - _swIdx} (want 0)");
+				e.Prefs.SetConfig("checkskip", 1);
+				Touch(0, true, SwPos(e));                    // finger held on the story screen
+				_swStep = 3; _swTime = 0; return true;
+			case 3:
+				if (_swTime < 1.0) return true;
+				Out($"SWITCH B: finger held 1 s with long-press skip on -> Skipping {e.Skipping} (want True)");
+				AppSwitch(e); _swIdx = e.CurMessageIdx;
+				_swStep = 4; _swTime = 0; return true;
+			case 4:
+				if (_swTime < 1.5) return true;
+				Out($"SWITCH B: after app switch Skipping {e.Skipping} IsPressed {e.IsPressed}, lines advanced {e.CurMessageIdx - _swIdx} (want False False 0)");
+				_swIdx = e.CurMessageIdx;
+				Touch(0, false, SwPos(e));                   // the lift arrives late
+				_swStep = 5; _swTime = 0; return true;
+			case 5:
+				if (_swTime < 1.0) return true;
+				Out($"SWITCH B: late lift -> lines advanced {e.CurMessageIdx - _swIdx} (want 0)");
+				e.Prefs.SetConfig("checkskip", 0);
+				e.StopAutoMode();
+				Touch(0, true, SwPos(e));
+				_swStep = 6; _swTime = 0; return true;
+			case 6:
+				if (_swTime < 0.9) return true;              // a hold (>= 0.6 s) would toggle Auto on lift
+				Input.ParseInputEvent(new InputEventScreenTouch { Index = 0, Pressed = false, Canceled = true, Position = SwPos(e) });
+				_swStep = 7; _swTime = 0; return true;
+			case 7:
+				if (_swTime < 0.5) return true;
+				Out($"SWITCH C: held touch cancelled by iOS -> AutoMode {e.AutoMode} (want False)");
+				Touch(0, true, SwPos(e));
+				_swStep = 8; _swTime = 0; return true;
+			case 8:
+				if (_swTime < 0.9) return true;
+				Touch(0, false, SwPos(e));
+				_swStep = 9; _swTime = 0; return true;
+			case 9:
+				if (_swTime < 0.5) return true;
+				Out($"SWITCH D: normal hold + lift -> AutoMode {e.AutoMode} (want True)");
+				e.StopAutoMode();
+				Finish(0, "switch test done");
+				return true;
+		}
+		return true;
+	}
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;
@@ -416,8 +497,9 @@ public static class Wa2Autoplay
 				var page = e.UiMgr.OptionsMenu.PageList.GetChild(Wa2PhoneOptions.PageIndex);
 				var btns = page.GetChildren().OfType<Wa2Button>().ToList();
 				_optTextIdx = Wa2Phone.TextIdx;
-				btns[9].EmitSignal(BaseButton.SignalName.ButtonDown);
-				Out($"OPTION4 tap Larger -> TextIdx = {Wa2Phone.TextIdx} (want 3); lit {btns[9].ButtonPressed}, Small lit {btns[6].ButtonPressed}");
+				// buttons in page order: Fill Screen 0-2, Side Bars 3-5, Pictures 6-7, Text Size 8-11
+				btns[11].EmitSignal(BaseButton.SignalName.ButtonDown);
+				Out($"OPTION4 tap Larger -> TextIdx = {Wa2Phone.TextIdx} (want 3); lit {btns[11].ButtonPressed}, Small lit {btns[8].ButtonPressed}");
 				return;
 			}
 			if (phone && _gStep == 4) { Wa2Phone.SetText(_optTextIdx); Finish(0, "options saved"); return; }
@@ -426,6 +508,7 @@ public static class Wa2Autoplay
 			return;
 		}
 		if (GestureTick(delta, e)) return;
+		if (SwitchTick(delta, e)) return;
 		// `--film=N`: after each click, save every 2nd frame for N frames (to see transitions).
 		if (_film > 0)
 		{
@@ -509,8 +592,8 @@ public static class Wa2Autoplay
 				Out($"pictures -> {(Wa2Phone.Sharper ? "Sharper" : "Original")}");
 				return;    // no click: the same line settles and is saved again as <key>_2
 			}
-			if (_done >= Lines && !GestureTest && !Args.Contains("--backlog-voice-test") && !Args.Contains("--assist-test")) { Finish(0, "done"); return; }
-			if ((GestureTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
+			if (_done >= Lines && !GestureTest && !SwitchTest && !Args.Contains("--backlog-voice-test") && !Args.Contains("--assist-test")) { Finish(0, "done"); return; }
+			if ((GestureTest || SwitchTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
 			if (Args.Contains("--assist-test") && _done >= 2) return;
 			e.ClickAdv(true);
 			if (FilmFrames > 0) { _film = FilmFrames; _filmKey = k; }
