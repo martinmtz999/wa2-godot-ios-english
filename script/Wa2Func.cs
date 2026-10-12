@@ -211,6 +211,10 @@ public class Wa2Func
 			if (!_engine.SkipMode)
 				Wa2UiMgr.DevSkipTo = 0;
 		}
+		else if (Wa2UiMgr.DevZeroScan)
+		{
+			_engine.SkipMode = idx != 0;                  // stop on each page numbered 0, skip the rest
+		}
 		else if (Wa2UiMgr.DevZeroPick > 0)
 		{
 			if (idx == 0) Wa2UiMgr.DevZeroPick--;      // reached one more page numbered 0

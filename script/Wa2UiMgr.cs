@@ -152,6 +152,9 @@ public partial class Wa2UiMgr : Control
 	// English patch numbers every inserted page 0). For PC saves that say "line 0" (research/09).
 	public static int DevZeroPick = int.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--zero-pick="))?["--zero-pick=".Length..], out int z) ? z : 0;
+	// `--zero-scan`: fast-forward but stop on every message numbered 0 (autoplay then saves a shot
+	// <scene>_0, <scene>_0_2, ...), to find which one a PC "line 0" save was made on.
+	public static bool DevZeroScan = OS.GetCmdlineUserArgs().Contains("--zero-scan");
 	public void OpenTitleMenu()
 	{
 		if (_devStartScript != null)
@@ -168,7 +171,7 @@ public partial class Wa2UiMgr : Control
 				GD.Print("import: game flags set " + fl);
 			}
 			OpenGame();
-			_engine.SkipMode = DevSkipTo > 0 || DevZeroPick > 1;
+			_engine.SkipMode = DevSkipTo > 0 || DevZeroPick > 1 || DevZeroScan;
 			return;
 		}
 		_engine.State = Wa2EngineMain.GameState.TITLE;

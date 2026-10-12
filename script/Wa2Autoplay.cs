@@ -479,6 +479,16 @@ public static class Wa2Autoplay
 		var e = Wa2EngineMain.Engine;
 		if (AssistTick(delta, e)) return;
 		if (BacklogVoiceTick(delta, e)) return;
+		// `--show-confirm`: the save dialog ("Overwrite file in this slot?") and its notice, with a no-op
+		// action (nothing is saved), for shots of the dialog lettering.
+		if (Args.Contains("--show-confirm") && _done >= 2)
+		{
+			_gTime += delta;
+			if (_gStep < 0) { if (_gTime < 1.0) return; e.UiMgr.OpenConfirm(Wa2EngineMain.Tr("存档将被覆盖。\n确定吗？", "Overwrite file in this slot?"), Wa2EngineMain.Tr("存档已保存", "File Saved"), true, () => { }); _gStep = 0; _gTime = 0; return; }
+			if (_gTime < 1.0) return;
+			if (_gStep == 0) { Save("confirm"); e.UiMgr.UIConfirm.OnConfirmBtnDown(); _gStep = 1; _gTime = 0; return; }
+			Save("notice"); Finish(0, "confirm shots saved"); return;
+		}
 		if (Args.Contains("--show-panel") && _done >= 2)
 		{
 			if (!Wa2Phone.IsOpen && _gTime == 0) { Wa2Phone.Open(e); _gTime = 0.001; return; }

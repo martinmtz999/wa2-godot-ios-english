@@ -141,14 +141,15 @@ public partial class Wa2AdvMain : Control
 		// and the longer re-wrapped lines were not wanted), so the box stays inside the picture.
 		TextLabel.WrapCols = 0;
 		TextLabel.MaxChars = 28;
-		// Read / Auto / Skip indicators (120x40): the PC puts them at the box's bottom-left, where the
-		// enlarged text runs over them; with larger text or side bars they go to the right end of the
-		// name row, which only holds the name at its left.
+		// Read / Auto / Skip indicators (120x40) at the box's bottom-left, as on the PC (user, 2026-10-11).
+		// From 2026-10-08 they sat at the right end of the name row: the enlarged box ran over the PC
+		// place and pushed it into the screen corner. With the PC-size box that no longer happens.
+		// `--ind-name-row` restores the name-row place for comparisons.
 		var ind = GetNodeOrNull<Control>("HBoxContainer2");
 		if (ind != null)
 		{
 			_indPos ??= ind.Position;
-			bool moved = k > 1f || Wa2Wide.StripWidth > 0;
+			bool moved = OS.GetCmdlineUserArgs().Contains("--ind-name-row");
 			ind.Position = moved ? new Vector2(ScaleAboutBoxBottom(new Vector2(1002, 0), k).X - 120, NameLabel.Position.Y + 14 * k - 20) : _indPos.Value;
 		}
 		MessageBox.Position = new Vector2(16, 496 + WideDrop);

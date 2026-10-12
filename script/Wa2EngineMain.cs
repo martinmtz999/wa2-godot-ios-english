@@ -1004,7 +1004,7 @@ public void ClickAdv(bool click = false)
 	public int SkipKind = 0;
 	// Skip may pass unread text: swipe left (skip all), Options "Skip Mode: All" for the button / Ctrl,
 	// or a test run's --skip-to.
-	public bool UnreadSkipOk() => SkipKind == 2 || (SkipKind == 0 && (int)Prefs.GetConfig("msg_cut_optin") == 1) || Wa2UiMgr.DevSkipTo > 0 || Wa2UiMgr.DevZeroPick > 0;
+	public bool UnreadSkipOk() => SkipKind == 2 || (SkipKind == 0 && (int)Prefs.GetConfig("msg_cut_optin") == 1) || Wa2UiMgr.DevSkipTo > 0 || Wa2UiMgr.DevZeroPick > 0 || Wa2UiMgr.DevZeroScan;
 	public bool CanSkip()
 	{
 		return (SkipMode || Skipping) && (HasReadMessage || UnreadSkipOk()) && !SkipDisable;
