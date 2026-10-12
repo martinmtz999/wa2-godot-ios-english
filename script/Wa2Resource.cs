@@ -36,6 +36,17 @@ public class Wa2Resource
 	private static readonly Dictionary<string, ImageTexture> _imageCache = new();
 	private static readonly Queue<string> _imageCacheKeys = new();
 	private const int ImageCacheMaxCount = 128;
+	// Also capped by size: on iOS the textures are NOT compressed (Godot 4.7 registers the ASTC
+	// compressor only in editor builds, modules/astcenc/register_types.cpp under TOOLS_ENABLED), so a
+	// 2x background is 14.7 MB and a 2x sprite 5.9 MB. 128 of them could pass 1.5 GB; keep <= 600 MB.
+	// Test aids: `--image-cache-mb=N` (small budget to force eviction), `--no-texture-compress` (desktop
+	// editor builds can compress; this makes them keep textures uncompressed like the phone).
+	private static readonly long ImageCacheMaxBytes = (System.Array.Find(OS.GetCmdlineUserArgs(), a => a.StartsWith("--image-cache-mb=")) is string mb
+		&& long.TryParse(mb["--image-cache-mb=".Length..], out long m) ? m : 600L) * 1024 * 1024;
+	private static readonly bool NoTextureCompress = System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--no-texture-compress") >= 0;
+	private static readonly Dictionary<string, long> _imageCacheSizes = new();
+	public static long ImageCacheBytes { get; private set; }
+	public static int ImageCacheCount => _imageCache.Count;
 
 	// ResPath 全局化路径缓存（避免每次 LoadFileBuffer/GetVoiceStream 都调 Godot API）
 	private static string _cachedResPath, _cachedResPathGlobalized;
@@ -55,8 +66,12 @@ public class Wa2Resource
 	// iOS 性能优化：运行时解码的大图（背景/CG/立绘，来自 .pak 的 TGA/BMP）在上传 GPU 前
 	// Godot 4.5 运行时 Compress 直接按 GPU 格式压缩：iOS 用 ASTC（显存降约 6-8x）。
 	// 压缩结果随 _imageCache 缓存，仅首次解码付出一次 CPU 成本。压缩失败时退回未压缩纹理，绝不影响显示功能。
+	// NOTE (2026-10-11): Godot 4.7 registers the ASTC compressor only in editor builds (TOOLS_ENABLED),
+	// so in the iOS export this does nothing and textures stay RGBA8 (4 bytes/px). Hence the size cap
+	// on _imageCache. Measured in the editor: ASTC of a 1024x1440 sprite ~357 ms.
 	private static void GpuCompressIfLarge(Image image)
 	{
+		if (NoTextureCompress) return;
 		Image.Format fmt = image.GetFormat();
 		if ((fmt == Image.Format.Rgba8 || fmt == Image.Format.Rgb8)
 			&& image.GetWidth() >= 512 && image.GetHeight() >= 512)
@@ -89,12 +104,18 @@ public class Wa2Resource
 		}
 		tex.ResourceName = path;
 		string key = path + "|" + Wa2EngineMain.Engine.EffectMode;
+		long bytes = (long)image.GetWidth() * image.GetHeight() * (image.IsCompressed() ? 1 : 4);
+		if (_imageCacheSizes.Remove(key, out long old)) ImageCacheBytes -= old;   // re-cached key
 		_imageCache[key] = tex;
+		_imageCacheSizes[key] = bytes;
+		ImageCacheBytes += bytes;
 		_imageCacheKeys.Enqueue(key);
-		while (_imageCacheKeys.Count > ImageCacheMaxCount)
+		while (_imageCacheKeys.Count > 1 && (_imageCacheKeys.Count > ImageCacheMaxCount || ImageCacheBytes > ImageCacheMaxBytes))
 		{
 			string oldest = _imageCacheKeys.Dequeue();
+			if (oldest == key) { _imageCacheKeys.Enqueue(key); continue; }   // never evict the image just added
 			_imageCache.Remove(oldest);
+			if (_imageCacheSizes.Remove(oldest, out long b)) ImageCacheBytes -= b;
 		}
 		return tex;
 	}
@@ -263,6 +284,8 @@ public class Wa2Resource
 	{
 		_imageCache.Clear();
 		_imageCacheKeys.Clear();
+		_imageCacheSizes.Clear();
+		ImageCacheBytes = 0;
 		HiRes.Clear();
 		var e = Wa2EngineMain.Engine;
 		if (e == null) return;

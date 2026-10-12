@@ -22,6 +22,7 @@ public static class Wa2Autoplay
 	// `--toggle-pictures-at=N`: after line N flip Options -> Pictures (Sharper/Original) and save the
 	// same line again (<key>_2), to test the live reload. Writes phone.cfg: use a scratch XDG_DATA_HOME.
 	static readonly int ToggleAt = int.TryParse(Arg("--toggle-pictures-at="), out int ta) ? ta : 0;
+	static int _importRetries;
 	static int _film; static string _filmKey;
 	static double _settled, _idle, _nudge;
 	static readonly HashSet<string> _keys = new();
@@ -31,6 +32,7 @@ public static class Wa2Autoplay
 	static void Finish(int code, string why)
 	{
 		Out($"{why} ({_done} lines)");
+		Out($"image cache: {Wa2Resource.ImageCacheCount} images, {Wa2Resource.ImageCacheBytes / 1048576} MB");
 		Wa2EngineMain.Engine.GetTree().Quit(code);
 	}
 
@@ -548,7 +550,18 @@ public static class Wa2Autoplay
 			if (slot != null)
 			{
 				int want = int.TryParse(Arg("--skip-to="), out int w) ? w : -1;
-				if (e.CurMessageIdx != want) { Finish(5, $"import: stopped at {e.Script.ScriptName} {e.CurMessageIdx}, wanted {want}"); return; }
+				// One slow frame (e.g. the first decode of a 2x picture) can "settle" a line while still
+				// fast-forwarding: keep going while still in the start scene (or its English split parts,
+				// "2402" -> "2402_2", which keep the scene's message numbers) and short of the target.
+				string start = Arg("--start="), cur = e.Script.ScriptName;
+				if (e.CurMessageIdx != want && want > 0 && e.CurMessageIdx < want
+					&& (cur == start || cur.StartsWith(start + "_")) && ++_importRetries <= 300)
+				{
+					_keys.Remove(k); _settled = 0;
+					e.SkipMode = true; e.ClickAdv(true);
+					return;
+				}
+				if (e.CurMessageIdx != want) { Finish(5, $"import: stopped at {e.Script.ScriptName} {e.CurMessageIdx}, wanted {want} (retries {_importRetries})"); return; }
 				e.GameSav.SaveData(int.Parse(slot));
 				Save("import");
 				Out($"import: saved {e.Script.ScriptName} message {e.CurMessageIdx} to slot {slot}; flags {string.Join(",", e.GameFlags)}");
