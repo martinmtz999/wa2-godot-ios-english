@@ -8,7 +8,7 @@ using System.Collections.Generic;
 public partial class Wa2Phone : Control
 {
 	private const string Cfg = "user://phone.cfg";
-	public static readonly float[] TextSizes = { 1.0f, 1.2f, 1.35f, 1.5f };
+	public static readonly float[] TextSizes = { 1.0f, 1.2f, 1.3f, 1.4f };   // letter size in the PC box (2026-10-11)
 	public static readonly string[] TextNames = { "Small", "Medium", "Large", "Larger" };
 	public static readonly string[] FillNames = { "Deep", "Light", "Black" };
 	public static int TextIdx = 2, FillIdx = 0;

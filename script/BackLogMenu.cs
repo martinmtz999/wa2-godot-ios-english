@@ -10,16 +10,19 @@ public partial class BackLogMenu : BasePage
   public VScrollBar ScrollBar;
   public List<VoiceInfo> VoiceInfos;
   public int VoiceIdx = 0;
-  // Rows per page: 4 at the PC size; 3 when the dialogue size (Wa2AdvMain.TextScale) is enlarged,
-  // so the backlog text matches the main text. Applied on first open: EnglishPatch is only known
+  // Rows per page: 4 (PC layout). Until 2026-10-11 an enlarged dialogue size gave 3 wider rows (the
+  // k > 1 branch below, now unused); Text Size now only enlarges the letters. Applied on first open: EnglishPatch is only known
   // after the paks are found, which is after _Ready.
   private int _rows = 4;
   private float _appliedK = 1f;
   private Vector4 _origBox, _origPanel; private Vector2 _origScroll, _origItem; private float _origTextY = -1;
   private void ApplyTextScale()
   {
-    float k = Wa2EngineMain.EnglishPatch ? Wa2AdvMain.TextScale : 1f;
-    if (Mathf.IsEqualApprox(k, _appliedK)) return;
+    // Since 2026-10-11 Text Size only enlarges the letters (the PC's box and lines stay; user):
+    // the backlog keeps the PC layout (4 rows) and draws its letters at the same scale.
+    float g = Wa2EngineMain.EnglishPatch ? Wa2AdvMain.TextScale : 1f;
+    float k = 1f;
+    if (Mathf.IsEqualApprox(g, _appliedK)) return;
     var panel = GetNodeOrNull<Control>("NinePatchRect");
     if (_origTextY < 0)
     {
@@ -29,7 +32,12 @@ public partial class BackLogMenu : BasePage
       var it0 = BackLogItems.GetChild<BackLogItem>(0);
       _origItem = it0.CustomMinimumSize; _origTextY = it0.TextLabel.Position.Y;
     }
-    _appliedK = k;
+    _appliedK = g;
+    for (int i = 0; i < BackLogItems.GetChildCount(); i++)
+    {
+      var it = BackLogItems.GetChild<BackLogItem>(i);
+      it.NmaeLabel.GlyphScale = g; it.TextLabel.GlyphScale = g;
+    }
     if (k <= 1.01f)
     {
       _rows = 4;

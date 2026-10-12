@@ -101,16 +101,16 @@ public partial class Wa2AdvMain : Control
 			ApplyTextScale();
 		}
 	}
-	// Larger dialogue for small phone screens (English mode). Scales the text, line spacing, name
-	// and the message box together about the box's bottom centre (640, 704), so the layout keeps
-	// its proportions and the text stays inside the box; the box grows upward. 1 = PC layout;
-	// default 1.35, chosen by the user for a 6.1" phone (2026-10-05). --text-scale=K overrides.
+	// Larger dialogue for phone screens (English mode): the LETTER size (Wa2Label.GlyphScale). Since
+	// 2026-10-11 the box, line breaks and line pitch stay the PC's (user: "bigger text, same original
+	// box"); each glyph is drawn larger about its PC slot. 1 = PC; default 1.3 (Text Size Large).
+	// Before, this scaled the whole box (x1.35 was 20% longer than the PC's, past the picture's edges).
 	// The English lines are pre-wrapped at <= 55 half-width chars and pages hold <= 3 lines
-	// (99.97% of pages), which is what the box was sized for.
+	// (99.97% of pages), which is what the box was sized for. --text-scale=K overrides.
 	public static readonly bool TextScaleFromArgs = OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--text-scale="));
 	public static float TextScale = float.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--text-scale="))?["--text-scale=".Length..],
-		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1.35f;
+		System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float ts) ? ts : 1.3f;
 	// Wide screens move the toolbar into the side strips (Wa2Wide), freeing the bottom of the box:
 	// the box, name and text then sit this much lower. Set by Wa2Wide.
 	public static float WideDrop = 0;
@@ -124,7 +124,8 @@ public partial class Wa2AdvMain : Control
 	public void ApplyTextScale()
 	{
 		if (!Wa2EngineMain.EnglishPatch || _engine.NovelMode) return;
-		float k = TextScale;
+		float k = 1f;                                              // layout: always the PC's box
+		TextLabel.GlyphScale = NameLabel.GlyphScale = TextScale;   // letters: Text Size
 		WideDrop = WideScreen ? DropFor(k) : 0;
 		TextLabel.FontSize = Mathf.RoundToInt(28 * k);
 		TextLabel.ParagraphSpacing = Mathf.RoundToInt(13 * k);

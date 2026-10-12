@@ -23,6 +23,8 @@ public static class Wa2Autoplay
 	// same line again (<key>_2), to test the live reload. Writes phone.cfg: use a scratch XDG_DATA_HOME.
 	static readonly int ToggleAt = int.TryParse(Arg("--toggle-pictures-at="), out int ta) ? ta : 0;
 	static int _importRetries;
+	static readonly Queue<int> _choices = new((Arg("--choose=") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse));
+	static double _chooseWait;
 	static int _film; static string _filmKey;
 	static double _settled, _idle, _nudge;
 	static readonly HashSet<string> _keys = new();
@@ -531,6 +533,20 @@ public static class Wa2Autoplay
 		}
 		if (adv.SelectMessageContainer.Visible)
 		{
+			// `--choose=1,0`: pick these options at the next choices, in order (0 = first option). Used to
+			// replay PC saves made after a choice (tools/import_pc_saves.py tries each option).
+			if (_choices.Count > 0)
+			{
+				_chooseWait += delta;
+				if (_chooseWait < 0.5) return;
+				_chooseWait = 0;
+				int n = _choices.Dequeue(), shown = 0;
+				foreach (var c in adv.SelectMessageContainer.GetChildren()) if (c is CanvasItem ci && ci.Visible) shown++;
+				if (n >= shown) { Finish(4, $"choice in {e.Script.ScriptName} idx {e.CurMessageIdx} has {shown} options, wanted option {n}"); return; }
+				Out($"choice in {e.Script.ScriptName} idx {e.CurMessageIdx}: option {n} of {shown}");
+				adv.OnSelectMessageButtonDown(n);
+				return;
+			}
 			Save("choice");
 			Finish(4, $"stopped at a choice in {e.Script.ScriptName} idx {e.CurMessageIdx} (choices not automated yet)");
 			return;
@@ -554,7 +570,8 @@ public static class Wa2Autoplay
 				// fast-forwarding: keep going while still in the start scene (or its English split parts,
 				// "2402" -> "2402_2", which keep the scene's message numbers) and short of the target.
 				string start = Arg("--start="), cur = e.Script.ScriptName;
-				if (e.CurMessageIdx != want && want > 0 && e.CurMessageIdx < want
+				bool shortOfTarget = want > 0 ? e.CurMessageIdx < want : Wa2UiMgr.DevZeroPick > 0;   // --zero-pick still counting
+				if ((e.CurMessageIdx != want || Wa2UiMgr.DevZeroPick > 0) && shortOfTarget
 					&& (cur == start || cur.StartsWith(start + "_")) && ++_importRetries <= 300)
 				{
 					_keys.Remove(k); _settled = 0;
@@ -562,6 +579,14 @@ public static class Wa2Autoplay
 					return;
 				}
 				if (e.CurMessageIdx != want) { Finish(5, $"import: stopped at {e.Script.ScriptName} {e.CurMessageIdx}, wanted {want} (retries {_importRetries})"); return; }
+				// The PC save's flags are the state at that line (after the player's own choices): put them
+				// back just before saving, so a replayed choice can never leave a different flag behind.
+				string fl = Arg("--import-flags=");
+				if (fl != null)
+				{
+					var vals = fl.Split(',');
+					for (int i = 0; i < vals.Length && i < e.GameFlags.Length; i++) e.GameFlags[i] = int.Parse(vals[i]);
+				}
 				e.GameSav.SaveData(int.Parse(slot));
 				Save("import");
 				Out($"import: saved {e.Script.ScriptName} message {e.CurMessageIdx} to slot {slot}; flags {string.Join(",", e.GameFlags)}");

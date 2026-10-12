@@ -58,6 +58,8 @@ public partial class Wa2Label : Node2D
 	// public int Rect2Size = 31;
 	[Export]
 	public int ParagraphSpacing = 13;
+	// Drawn size of each letter relative to its slot (1 = PC). Only the English glyphs; layout unchanged.
+	public float GlyphScale = 1f;
 	[Export]
 	public int LineSpacing = 0;
 	[Export]
@@ -695,6 +697,13 @@ public partial class Wa2Label : Node2D
 		// 0-3 are not measured yet and keep the 34px rule.
 		if (r.Chr == '\u2026')
 			dst = new(new Vector2(r.X - 4 * k, r.Y - 10 * k), new Vector2(40 * k, 34 * k));
+		// Bigger letters in the PC's slots (Wa2AdvMain letter scale): the glyph grows about its cell's
+		// centre; advance, line pitch and line breaks stay the PC's.
+		if (GlyphScale != 1f)
+		{
+			var c = dst.GetCenter();
+			dst = new Rect2(c - dst.Size * GlyphScale / 2, dst.Size * GlyphScale);
+		}
 		Texture2D glyphs = EnglishGlyphs(FontTexture);
 		if (!ReferenceEquals(glyphs, FontTexture))
 		{
@@ -723,8 +732,8 @@ public partial class Wa2Label : Node2D
 	private void DrawEnglishVector(CharRenderData r)
 	{
 		float k = r.Size / 28f;
-		int size = Mathf.RoundToInt(r.Size * 0.78f);   // cap height of the PC glyphs without their soft edge
-		float baseline = r.Y + 16 * k;                       // atlas baseline: row 30.5 of the 40px cell at 34px, from y-10
+		int size = Mathf.RoundToInt(r.Size * 0.78f * GlyphScale);   // cap height of the PC glyphs without their soft edge
+		float baseline = r.Y + 7 * k + 9 * k * GlyphScale;          // atlas baseline: row 30.5 of the 40px cell at 34px, from y-10; scaled about the cell centre
 		Color fg = new(Color.R, Color.G, Color.B, r.Alpha);
 		Color sh = new(68 / 255f, 68 / 255f, 68 / 255f, r.Alpha);
 		void Glyph(string ch, float centerX)

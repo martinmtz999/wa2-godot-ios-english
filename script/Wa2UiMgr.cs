@@ -148,6 +148,10 @@ public partial class Wa2UiMgr : Control
 		.FirstOrDefault(a => a.StartsWith("--start="))?["--start=".Length..];
 	public static int DevSkipTo = int.TryParse(OS.GetCmdlineUserArgs()
 		.FirstOrDefault(a => a.StartsWith("--skip-to="))?["--skip-to=".Length..], out int n) ? n : 0;
+	// `--zero-pick=K`: fast-forward to the K-th message numbered 0 (1 = the scene's first line; the
+	// English patch numbers every inserted page 0). For PC saves that say "line 0" (research/09).
+	public static int DevZeroPick = int.TryParse(OS.GetCmdlineUserArgs()
+		.FirstOrDefault(a => a.StartsWith("--zero-pick="))?["--zero-pick=".Length..], out int z) ? z : 0;
 	public void OpenTitleMenu()
 	{
 		if (_devStartScript != null)
@@ -164,7 +168,7 @@ public partial class Wa2UiMgr : Control
 				GD.Print("import: game flags set " + fl);
 			}
 			OpenGame();
-			_engine.SkipMode = DevSkipTo > 0;
+			_engine.SkipMode = DevSkipTo > 0 || DevZeroPick > 1;
 			return;
 		}
 		_engine.State = Wa2EngineMain.GameState.TITLE;

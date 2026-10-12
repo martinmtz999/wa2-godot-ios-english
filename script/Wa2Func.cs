@@ -211,6 +211,11 @@ public class Wa2Func
 			if (!_engine.SkipMode)
 				Wa2UiMgr.DevSkipTo = 0;
 		}
+		else if (Wa2UiMgr.DevZeroPick > 0)
+		{
+			if (idx == 0) Wa2UiMgr.DevZeroPick--;      // reached one more page numbered 0
+			_engine.SkipMode = Wa2UiMgr.DevZeroPick > 0;
+		}
 		_engine.SubtitleMgr.English?.CheckForCutoff();
 		_engine.AdvMain.ShowText();
 		if (_engine.Backlogs.Count <= 0)

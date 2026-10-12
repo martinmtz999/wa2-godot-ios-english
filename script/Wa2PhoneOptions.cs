@@ -26,7 +26,7 @@ public static class Wa2PhoneOptions
 		("Text Setting", new[]
 		{
 			new Row("Text Size", Wa2Phone.TextNames, () => Wa2Phone.TextIdx, Wa2Phone.SetText,
-				"Size of the dialogue text and its box."),
+				"Size of the letters. The text box stays the size of the PC's."),
 			new Row("Text Box", Wa2Phone.BoxNames, () => Wa2Phone.BoxIdx, Wa2Phone.SetBox,
 				"How much the box covers the art: full, lighter, only its ring, or none (outlined text)."),
 		}),
