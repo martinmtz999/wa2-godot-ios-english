@@ -458,7 +458,10 @@ public partial class Wa2EngineMain : Control
 		}
 		// iOS can close a backgrounded app: save first (slot Wa2Quick.AutoSlot).
 		if (what == NotificationApplicationPaused || what == NotificationWMWindowFocusOut || what == NotificationApplicationFocusOut)
+		{
 			Wa2Quick.AutoSave(this);
+			SysSav?.Flush();   // read marks are written byte by byte; don't lose them if iOS closes the app
+		}
 	}
 	public void Back()
 	{
@@ -990,10 +993,12 @@ public void ClickAdv(bool click = false)
 	}
 	// 0 = follow the Options setting, 1 = read text only (swipe right), 2 = everything (swipe left)
 	public int SkipKind = 0;
+	// Skip may pass unread text: swipe left (skip all), Options "Skip Mode: All" for the button / Ctrl,
+	// or a test run's --skip-to.
+	public bool UnreadSkipOk() => SkipKind == 2 || (SkipKind == 0 && (int)Prefs.GetConfig("msg_cut_optin") == 1) || Wa2UiMgr.DevSkipTo > 0;
 	public bool CanSkip()
 	{
-		bool unreadOk = SkipKind == 2 || (SkipKind == 0 && (int)Prefs.GetConfig("msg_cut_optin") == 1);
-		return (SkipMode || Skipping) && (HasReadMessage || unreadOk || Wa2UiMgr.DevSkipTo > 0) && !SkipDisable;
+		return (SkipMode || Skipping) && (HasReadMessage || UnreadSkipOk()) && !SkipDisable;
 	}
 	public void AutoModeStart()
 	{
@@ -1180,17 +1185,10 @@ public void ClickAdv(bool click = false)
 			if (AdvActive) AdvMain.OnOffButtonDown();
 			return;
 		}
-		if (Mathf.Abs(d.X) > 80 && Mathf.Abs(d.Y) < Mathf.Abs(d.X))   // right: skip read, left: skip all
-		{
-			if (AdvActive && !AdvMain.SelectMessageContainer.Visible)
-			{
-				int kind = d.X > 0 ? 1 : 2;
-				bool on = !(SkipMode && SkipKind == kind);
-				StopSkip(); AutoMode = false; AutoTimer.DeActive();
-				if (on) { SkipKind = kind; SkipMode = true; Wa2Quick.Haptic(); }
-			}
+		// Sideways swipes no longer skip (user, 2026-10-08: skip is the side-bar button, held or
+		// tapped); they are swallowed so a sideways drag does not count as a tap.
+		if (Mathf.Abs(d.X) > 80 && Mathf.Abs(d.Y) < Mathf.Abs(d.X))
 			return;
-		}
 		bool fromRail = TouchFromRail; TouchFromRail = false;
 		if (_touchMoved || longPress)
 			return;
@@ -1288,6 +1286,7 @@ public void ClickAdv(bool click = false)
 				BgInfo.Path = string.Format("B{0:D4}{1:D1}{2:D1}.tga", id / 10, id % 10, TimeMode);
 			}
 			NextTexture = Wa2Resource.GetTgaImage(BgInfo.Path);
+			Wa2Trace.Log("bg", BgInfo.Path, type, frame, Script?.ScriptName, CurMessageIdx, SkipMode ? 1 : 0);
 		}
 		else
 		{

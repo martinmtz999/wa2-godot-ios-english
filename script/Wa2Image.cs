@@ -56,11 +56,13 @@ public partial class Wa2Image : ColorRect
 	public void SetNextTexture(Texture2D texture)
 	{
 		(Material as ShaderMaterial).SetShaderParameter("next_texture", texture);
+		(Material as ShaderMaterial).SetShaderParameter("next_texture_div", texture != null && Wa2Resource.HiRes.Contains(texture) ? 2.0f : 1.0f);
 
 	}
 	public void SetCurTexture(Texture2D texture)
 	{
 		(Material as ShaderMaterial).SetShaderParameter("cur_texture", texture);
+		(Material as ShaderMaterial).SetShaderParameter("cur_texture_div", texture != null && Wa2Resource.HiRes.Contains(texture) ? 2.0f : 1.0f);
 		// GD.Print(texture.GetImage().SavePng("V.PNG"));
 	}
 	public void SetMaskTexture(Texture2D texture)

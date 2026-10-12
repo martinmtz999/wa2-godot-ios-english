@@ -114,25 +114,18 @@ public partial class Wa2AdvMain : Control
 	// Wide screens move the toolbar into the side strips (Wa2Wide), freeing the bottom of the box:
 	// the box, name and text then sit this much lower. Set by Wa2Wide.
 	public static float WideDrop = 0;
+	public static bool WideScreen;   // set by Wa2Wide
+	// How far the box moves down on wide phones (user: lower, to cover less of the art). As far as the
+	// third line of a page can go while staying ~7 px above the home-indicator inset (21 pt = 35 px):
+	// measured last-line bottoms at drop 0: Small 663, Medium 652, Large 645, Larger 638 (drop 13 .. 37).
+	private static float DropFor(float k) => Mathf.Clamp(13 + (k - 1) * 48, 0, 40);
 	private Vector2? _indPos;
-	private (float text, float name, float maxShift, int adv)? _alignBase;
-	// Wide text box: centre each page's text block in the box (lines stay left-aligned). A page of
-	// full-width lines starts at the box's left margin; shorter pages move right, at most back to
-	// the PC's own starting position.
-	public void AlignText()
-	{
-		if (_alignBase is not { } b || TextLabel.WrapCols <= 0) return;
-		float free = Mathf.Max((TextLabel.WrapCols - TextLabel.ShownMaxCols) * b.adv / 2f, 0f);
-		// Text Position: like PC (at most back to the PC's start) or centred in the box
-		float shift = Wa2Phone.CenterText ? free : Mathf.Min(free, b.maxShift);
-		TextLabel.Position = new Vector2(b.text + shift, TextLabel.Position.Y);
-		NameLabel.Position = new Vector2(b.name + shift, NameLabel.Position.Y);
-	}
 	private static Vector2 ScaleAboutBoxBottom(Vector2 p, float k) => new Vector2(640, 704 + WideDrop) + (p - new Vector2(640, 704)) * k;
 	public void ApplyTextScale()
 	{
 		if (!Wa2EngineMain.EnglishPatch || _engine.NovelMode) return;
 		float k = TextScale;
+		WideDrop = WideScreen ? DropFor(k) : 0;
 		TextLabel.FontSize = Mathf.RoundToInt(28 * k);
 		TextLabel.ParagraphSpacing = Mathf.RoundToInt(13 * k);
 		TextLabel.Position = ScaleAboutBoxBottom(new Vector2(278, 562), k);
@@ -143,31 +136,22 @@ public partial class Wa2AdvMain : Control
 		// (opaque part 1061px wide x 1.2 = 1273 of 1280); scaled uniformly it ran off both sides.
 		MessageBox.PivotOffset = new Vector2(624, 208);
 		MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f), k);
-		// Wide phones: the box reaches into the side bars and the text gets longer lines (re-wrapped
-		// by words, Wa2Label.WrapCols), so long pages need fewer lines. extra = added width in px.
-		float extra = WideDrop > 0 ? Mathf.Min(Wa2Wide.StripWidth, 160f) * 2 * 0.6f : 0f;
-		int adv = TextLabel.FontSize / 2 + TextLabel.LineSpacing;
-		int addCols = Mathf.FloorToInt(extra * 0.96f / adv);
-		TextLabel.WrapCols = addCols > 0 ? 55 + addCols : 0;
-		if (addCols > 0)
-		{
-			TextLabel.MaxChars = TextLabel.WrapCols / 2 + 2;
-			float dx = addCols * adv / 2f;
-			TextLabel.Position -= new Vector2(dx, 0);
-			NameLabel.Position -= new Vector2(dx, 0);
-			_alignBase = (TextLabel.Position.X, NameLabel.Position.X, dx, adv);
-			MessageBox.Scale = new Vector2(Mathf.Min(k, 1.2f) * (1 + extra / 1273f), k);
-		}
-		else { TextLabel.MaxChars = 28; _alignBase = null; }
-		// Read / Auto / Skip indicators (bottom-left, 120x40): with the longer lines they would sit on
-		// the text, so on wide phones they go to the bottom of the left side bar.
+		// Lines break where the PC breaks them (user, 2026-10-08: the box stretched into the side bars
+		// and the longer re-wrapped lines were not wanted), so the box stays inside the picture.
+		TextLabel.WrapCols = 0;
+		TextLabel.MaxChars = 28;
+		// Read / Auto / Skip indicators (120x40): the PC puts them at the box's bottom-left, where the
+		// enlarged text runs over them; with larger text or side bars they go to the right end of the
+		// name row, which only holds the name at its left.
 		var ind = GetNodeOrNull<Control>("HBoxContainer2");
 		if (ind != null)
 		{
 			_indPos ??= ind.Position;
-			ind.Position = addCols > 0 ? new Vector2(-Wa2Wide.StripWidth / 2 - 60, _indPos.Value.Y) : _indPos.Value;
+			bool moved = k > 1f || Wa2Wide.StripWidth > 0;
+			ind.Position = moved ? new Vector2(ScaleAboutBoxBottom(new Vector2(1002, 0), k).X - 120, NameLabel.Position.Y + 14 * k - 20) : _indPos.Value;
 		}
 		MessageBox.Position = new Vector2(16, 496 + WideDrop);
+		ApplyBoxStyle(k);
 		// Toolbar: slightly larger for touch when the text is enlarged, about its bottom-right corner.
 		var bar = GetNodeOrNull<Control>("HBoxContainer");
 		if (bar != null)
@@ -176,7 +160,6 @@ public partial class Wa2AdvMain : Control
 			bar.PivotOffset = new Vector2(bar.Size.X, 48);
 			bar.Scale = new Vector2(b, b);
 		}
-		AlignText();
 	}
 	public void Init(Wa2EngineMain e)
 	{
@@ -193,7 +176,8 @@ public partial class Wa2AdvMain : Control
 		LoadButton.ButtonDown += OnLoadButtonDown;
 		SaveButton.ButtonDown += OnSaveButtonDown;
 		AutoButton.ButtonDown += OnAutoButtonDown;
-		SkipButton.ButtonDown += OnSkipButtonDown;
+		SkipButton.ButtonDown += OnSkipPress;
+		SkipButton.ButtonUp += OnSkipRelease;
 		OffButton.ButtonDown += OnOffButtonDown;
 		OptionButton.ButtonDown += OnOptionButtonDown;
 		BackLogButton.ButtonDown += OnBackLogButtonDown;
@@ -231,6 +215,23 @@ public partial class Wa2AdvMain : Control
 			_engine.UiMgr.OpenBackLog();
 		}
 
+	}
+	// Skip button: hold to skip while the finger is down (like Ctrl on the PC); a quick tap turns
+	// skip on, and a tap while skipping turns it off. Follows Options "Skip Mode".
+	private bool _skipWasOn;
+	private ulong _skipPressMs;
+	public void OnSkipPress()
+	{
+		_skipWasOn = _engine.SkipMode;
+		_skipPressMs = Time.GetTicksMsec();
+		if (_skipWasOn) { _engine.StopSkip(); return; }
+		OnSkipButtonDown();
+		if (_engine.SkipMode) { _engine.AutoMode = false; Wa2Quick.Haptic(); }
+	}
+	public void OnSkipRelease()
+	{
+		if (!_skipWasOn && _engine.SkipMode && Time.GetTicksMsec() - _skipPressMs >= 350)
+			_engine.StopSkip();   // it was a hold: stop on release
 	}
 	public void OnSkipButtonDown()
 	{
@@ -466,7 +467,6 @@ public partial class Wa2AdvMain : Control
 	}
 	public void ShowText(bool fade = true)
 	{
-		AlignText();
 
 
 		// ClearText();
@@ -489,7 +489,7 @@ public partial class Wa2AdvMain : Control
 		{
 			_engine.HasReadMessage = false;
 			_engine.SetReadMessage(_engine.CurMessageIdx);
-			if (_engine.Prefs.GetConfig("msg_cut_optin") == 0)
+			if (!_engine.UnreadSkipOk())
 			{
 				_engine.StopSkip();
 			}
@@ -514,6 +514,33 @@ public partial class Wa2AdvMain : Control
 	}
 	public void SetWindowAlpha(int alpha)
 	{
-		Window.Modulate = new Color(1, 1, 1, alpha / 256f);
+		// Phone text box style (Wa2Phone.BoxIdx) scales the Options opacity: Light 55%, Ring/Clear none.
+		float f = Wa2Phone.BoxIdx switch { 1 => 0.55f, 2 or 3 => 0f, _ => 1f };
+		Window.Modulate = new Color(1, 1, 1, alpha / 256f * f);
+	}
+	private TextureRect _fade;
+	// Ring art, outline and the bottom fade for the phone text box styles.
+	private void ApplyBoxStyle(float k)
+	{
+		int st = Wa2EngineMain.EnglishPatch ? Wa2Phone.BoxIdx : 0;
+		var ring = GetNodeOrNull<CanvasItem>("MessageBox/MessageBox");
+		if (ring != null) ring.SelfModulate = new Color(1, 1, 1, st switch { 1 => 0.6f, 3 => 0f, _ => 1f });
+		Wa2Label.EnOutline = st switch { 2 => 1.2f, 3 => 1.6f, _ => 0f };
+		if (st == 3 && _fade == null)
+		{
+			var g = new Gradient { Offsets = new[] { 0f, 0.45f, 1f }, Colors = new[] { new Color(0, 0, 0, 0), new Color(0, 0, 0, 0.35f), new Color(0, 0, 0, 0.6f) } };
+			_fade = new TextureRect { Texture = new GradientTexture2D { Gradient = g, FillFrom = new Vector2(0, 0), FillTo = new Vector2(0, 1), Width = 4, Height = 64 },
+				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.Scale, MouseFilter = MouseFilterEnum.Ignore };
+			AddChild(_fade);
+			MoveChild(_fade, MessageBox.GetIndex());   // under the text
+		}
+		if (_fade != null)
+		{
+			_fade.Visible = st == 3;
+			float top = NameLabel.Position.Y - 40 * k;   // from a little above the name row to the bottom
+			_fade.Position = new Vector2(-Wa2Wide.StripWidth, top);
+			_fade.Size = new Vector2(1280 + 2 * Wa2Wide.StripWidth, 720 - top);
+		}
+		UpdateWindowAlpha();
 	}
 }

@@ -672,6 +672,7 @@ public partial class Wa2Label : Node2D
 	// 34px (size 28), offset (-3,-10), with a solid gray copy 2px down-right as the shadow. We use
 	// 1px: the user preferred the lighter look over an exact match.
 	private const int EnglishAtlasRows = 4;
+	public static float EnOutline = 0;   // px at size 28; set by Wa2AdvMain.ApplyBoxStyle
 	// English shadow: offset in px at size 28 and opacity; `--shadow=OFFSET,ALPHA` overrides.
 	private static readonly float[] EnShadow = ParseShadow();
 	private static float[] ParseShadow()
@@ -701,6 +702,16 @@ public partial class Wa2Label : Node2D
 			src = new(new Vector2(i % 20, i / 20) * Rect1Size, new Vector2(Rect1Size, Rect1Size));
 		}
 		if (!ReferenceEquals(glyphs, FontTexture)) TextureFilter = TextureFilterEnum.LinearWithMipmaps;
+		// Outline (Wa2Phone text box styles without the box fill): the glyph in dark at 8 offsets.
+		if (EnOutline > 0)
+		{
+			var oc = new Color(0.05f, 0.07f, 0.1f, r.Alpha * 0.85f);
+			for (int d = 0; d < 8; d++)
+			{
+				var o = new Vector2(Mathf.Cos(d * Mathf.Pi / 4), Mathf.Sin(d * Mathf.Pi / 4)) * EnOutline * k;
+				DrawTextureRectRegion(glyphs, new Rect2(dst.Position + o, dst.Size), src, oc);
+			}
+		}
 		if (Shadow)
 		{
 			Rect2 shadow = new(dst.Position + new Vector2(1, 1) * EnShadow[0] * k, dst.Size);

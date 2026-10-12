@@ -20,13 +20,15 @@ public static class Wa2PhoneOptions
 				"Widens the scenery into the side bars; CGs only gently; characters keep their shape."),
 			new Row("Side Bars", new[] { "Deep", "Light", "Black" }, () => Wa2Phone.FillIdx, Wa2Phone.SetFill,
 				"How the bars beside the picture look: a deep blur, a light blur, or plain black."),
+			new Row("Pictures", new[] { "Sharper", "Original" }, () => Wa2Phone.Sharper ? 0 : 1, k => Wa2Phone.SetSharper(k == 0),
+				"Sharper: 2x upscaled scenery, CGs and characters. Original: the game's own art."),
 		}),
 		("Text Setting", new[]
 		{
 			new Row("Text Size", Wa2Phone.TextNames, () => Wa2Phone.TextIdx, Wa2Phone.SetText,
 				"Size of the dialogue text and its box."),
-			new Row("Text Position", new[] { "Like PC", "Centered" }, () => Wa2Phone.CenterText ? 1 : 0, k => Wa2Phone.SetCenter(k == 1),
-				"Short pages start where the PC version starts them, or sit in the middle of the box."),
+			new Row("Text Box", Wa2Phone.BoxNames, () => Wa2Phone.BoxIdx, Wa2Phone.SetBox,
+				"How much the box covers the art: full, lighter, only its ring, or none (outlined text)."),
 		}),
 		("Control Setting", new[]
 		{
@@ -35,7 +37,7 @@ public static class Wa2PhoneOptions
 			new Row("Haptics", new[] { "On", "Off" }, () => Wa2Phone.Haptics ? 0 : 1, k => Wa2Phone.SetHaptics(k == 0),
 				"Light taps on button presses and a few dramatic moments."),
 			new Row("Gesture Guide", new[] { "Show" }, () => -1, _ => Wa2Phone.OpenGuide(Wa2EngineMain.Engine),
-				"Shows the touch gestures: tap, hold, and the four swipes.", true),
+				"Shows the touch gestures: tap, hold, swipes and the Skip button.", true),
 		}),
 	};
 

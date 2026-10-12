@@ -250,6 +250,32 @@ public class Wa2Resource
 		// GD.Print(SoundDic.GetValueOrDefault(path));
 		return LoadBmpImage(path);
 	}
+	// Sharper pictures: hires/<name>.webp next to the game data holds 2x waifu2x upscales of the
+	// backgrounds (b*), event CGs (v*) (tools/upscale_scenes.py) and character sprites, with alpha
+	// (tools/upscale_sprites.py). They are drawn on the 2x scene canvas (Wa2EngineMain.UseHiResCanvas);
+	// textures in HiRes report 2x their layout size, so Wa2Image tells mask.gdshader (*_texture_div).
+	// Options -> OPTION 4 -> Pictures: Original turns them off (Wa2Phone.Sharper); `--no-hires` too.
+	public static readonly System.Collections.Generic.HashSet<Texture2D> HiRes = new();
+	public static bool HiResAvailable => System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--no-hires") < 0
+		&& System.IO.Directory.Exists(System.IO.Path.Combine(GlobalizedResPath, "hires"));
+	// Pictures setting changed: drop cached images and reload what is on screen now.
+	public static void ReloadPictures()
+	{
+		_imageCache.Clear();
+		_imageCacheKeys.Clear();
+		HiRes.Clear();
+		var e = Wa2EngineMain.Engine;
+		if (e == null) return;
+		if (!string.IsNullOrEmpty(e.BgInfo.Path))
+			e.BgTexture.SetCurTexture(GetTgaImage(e.BgInfo.Path));
+		e.UpdateChar(0);
+	}
+	private static byte[] LoadHiResBuffer(string path)
+	{
+		if (!Wa2Phone.Sharper || !HiResAvailable || path.Length < 6 || !path.EndsWith(".tga")) return null;
+		string f = System.IO.Path.Combine(GlobalizedResPath, "hires", path[..^4] + ".webp");
+		return System.IO.File.Exists(f) ? System.IO.File.ReadAllBytes(f) : null;
+	}
 	public static ImageTexture LoadTgaImage(string path)
 	{
 		// ulong start = Time.GetTicksMsec();
@@ -258,6 +284,20 @@ public class Wa2Resource
 		if (_imageCache.TryGetValue(key, out var cached) && cached != null)
 		{
 			return cached;
+		}
+		byte[] hi = LoadHiResBuffer(path);
+		if (hi != null)
+		{
+			Image him = new();
+			if (him.LoadWebpFromBuffer(hi) == Error.Ok)
+			{
+				him.Convert(Image.Format.Rgba8);
+				if (Wa2EngineMain.Engine.EffectMode != "")
+					SetImageEffect(him, 32);
+				var htex = CacheImage(path, him);
+				if (htex != null) { htex.SetSizeOverride(new Vector2I(him.GetWidth() / 2, him.GetHeight() / 2)); HiRes.Add(htex); }
+				return htex;
+			}
 		}
 		byte[] buffer = LoadFileBuffer(path);
 		// GD.Print(path);

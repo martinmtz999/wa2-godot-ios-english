@@ -48,7 +48,7 @@ public partial class Wa2Wide : Node
 	private readonly List<(TextureButton btn, int col, System.Func<bool> active)> _btns = new();
 	private Vector2 _off;
 	private bool _wide, _built;
-	private const float Btn = 72f;
+	private const float Btn = 74f;   // 44 pt on the iPhone 15 Pro Max (720 px = 430 pt)
 	private TextureButton _help;
 	// "?" in the toolbar's style: a cyan ring with the game's own letters (Wa2Label).
 	private partial class HelpButton : Button
@@ -197,28 +197,33 @@ public partial class Wa2Wide : Node
 			bg.Size = new Vector2(vs.X - 1280 - _off.X, vs.Y);
 			if (side == 0) bg.Size = new Vector2(_off.X, vs.Y);
 		}
-		float drop = _wide ? 40f : 0f;
-		if (Wa2AdvMain.WideDrop != drop) { Wa2AdvMain.WideDrop = drop; _e.AdvMain.ApplyTextScale(); }
+		// Wide phones: the text box sits lower (Wa2AdvMain.WideDrop, by text size).
+		if (Wa2AdvMain.WideScreen != _wide) { Wa2AdvMain.WideScreen = _wide; _e.AdvMain.ApplyTextScale(); }
 		if (!_wide) { _rails.Visible = false; return; }
 		BuildButtons();
 		float rw = _off.X, cl = rw / 2, cr = _off.X + 1280 + rw / 2, top = _off.Y;
-		float ow = Mathf.Min(rw * 0.92f, 200), oh = ow * 125 / 220;
-		_ornaments[0].Position = new Vector2(cl - ow / 2, top + 14); _ornaments[0].Size = new Vector2(ow, oh);
-		_ornaments[1].Position = new Vector2(cr - ow / 2, top + 14); _ornaments[1].Size = new Vector2(ow, oh);
-		// Two groups per strip, mirrored, with roomy spacing, clear of the vertical middle (Dynamic
-		// Island) and of the rounded corners. Left = system: Save, Load above; Options below.
+		// Sized for the iPhone 15 Pro Max in landscape (430 x 932 pt; the 720-px game is 430 pt high).
+		// Buttons: 44 pt (Apple's minimum tap target), 10 pt apart. Two above and two below the Dynamic
+		// Island (~126 x 37 pt, centred on the side edge; + 8 pt margin), clear of the ~55 pt rounded
+		// corners and of the 21 pt home-indicator inset. Island and corner sizes are approximate
+		// (research/07-side-bar-layout.md). Left = system: Save, Load above; Options, Guide below.
 		// Right = reading (thumb): Backlog, Auto above; Skip, Hide below.
-		float step = Btn + 30, mid = top + 720 * 0.5f;
-		float a1 = mid - 70 - Btn - step, a2 = mid - 70 - Btn, b1 = mid + 70, b2 = mid + 70 + step;
+		float pt = vs.Y / 430f, mid = top + 720 * 0.5f;
+		float island = (126 / 2f + 8) * pt, step = Btn + 10 * pt;
+		float a2 = mid - island - Btn, a1 = a2 - step, b1 = mid + island, b2 = b1 + step;
+		float oh = Mathf.Max(a1 - top - 14, 0), ow = Mathf.Min(oh * 220 / 125, rw * 0.92f);   // ornament fits above
+		oh = ow * 125 / 220;
+		_ornaments[0].Position = new Vector2(cl - ow / 2, top + 8); _ornaments[0].Size = new Vector2(ow, oh);
+		_ornaments[1].Position = new Vector2(cr - ow / 2, top + 8); _ornaments[1].Size = new Vector2(ow, oh);
 		void At(int i, float x, float y) => _btns[i].btn.Position = new Vector2(x - Btn / 2, y);
 		At(1, cl, a1);   // save
 		At(2, cl, a2);   // load
 		At(0, cl, b1);   // options
+		_help.Position = new Vector2(cl - Btn / 2, b2);   // guide and phone settings
 		At(3, cr, a1);   // backlog
 		At(4, cr, a2);   // auto
 		At(5, cr, b1);   // skip
 		At(6, cr, b2);   // hide text box
-		_help.Position = new Vector2(cl - Btn / 2, b2);   // guide and phone settings
 	}
 
 	private bool _lowApplied;
@@ -241,6 +246,7 @@ public partial class Wa2Wide : Node
 	private void UpdateButtonFade(double delta)
 	{
 		if (!Wa2Phone.AutoHide) _btnShown = true;
+		foreach (var (btn, _, _) in _btns) if (btn.IsPressed()) { _btnShown = true; _hideIn = 5; }   // e.g. holding Skip
 		else if (_btnShown && (_hideIn -= delta) <= 0) _btnShown = false;
 		float target = _btnShown ? 1f : 0f;
 		_btnAlpha = Mathf.MoveToward(_btnAlpha, target, (float)delta / 0.25f);

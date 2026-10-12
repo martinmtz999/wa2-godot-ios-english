@@ -151,6 +151,13 @@ public class Wa2Prefs
 		{
 			ConfigFile.SetValue(section, "checkskip", 0);
 		}
+		// Once: the port used to default to Skip Mode "All" (and test configs copied to phones had it),
+		// so skip ran through unread text. Reset to the PC's "Already Read"; Options can change it back.
+		if (!ConfigFile.HasSectionKey(section, "skip_read_default"))
+		{
+			ConfigFile.SetValue(section, "msg_cut_optin", 0);
+			ConfigFile.SetValue(section, "skip_read_default", 1);
+		}
 	}
 
 	public void SetDefault()
@@ -159,7 +166,7 @@ public class Wa2Prefs
 		ConfigFile.SetValue(section, "wheel", 0);
 		ConfigFile.SetValue(section, "wait", 0);
 		ConfigFile.SetValue(section, "msg_wait", 2);
-		ConfigFile.SetValue(section, "msg_cut_optin", 1);
+		ConfigFile.SetValue(section, "msg_cut_optin", 0);   // Skip Mode: Already Read, the PC default (WA2.exe 0x41a2b1)
 		ConfigFile.SetValue(section, "all_sound", 1);
 		ConfigFile.SetValue(section, "bgm", 1);
 		ConfigFile.SetValue(section, "se", 1);

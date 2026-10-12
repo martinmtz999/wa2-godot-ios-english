@@ -19,6 +19,9 @@ public static class Wa2Autoplay
 
 	static int _done;
 	static readonly int FilmFrames = int.TryParse(Arg("--film="), out int ff) ? ff : 0;
+	// `--toggle-pictures-at=N`: after line N flip Options -> Pictures (Sharper/Original) and save the
+	// same line again (<key>_2), to test the live reload. Writes phone.cfg: use a scratch XDG_DATA_HOME.
+	static readonly int ToggleAt = int.TryParse(Arg("--toggle-pictures-at="), out int ta) ? ta : 0;
 	static int _film; static string _filmKey;
 	static double _settled, _idle, _nudge;
 	static readonly HashSet<string> _keys = new();
@@ -96,6 +99,8 @@ public static class Wa2Autoplay
 	// what happened: swipe down -> backlog, two-finger tap -> text box hidden, tap -> shown, tap -> next line.
 	static readonly bool GestureTest = Args.Contains("--gesture-test");
 	static int _gStep = -1; static double _gTime;
+	static bool _skipPressed, _autoPressed;
+	static int _optTextIdx, _savedCut;
 	static void Touch(int index, bool down, Vector2 pos) =>
 		Input.ParseInputEvent(new InputEventScreenTouch { Index = index, Pressed = down, Position = pos });
 	static void Drag(Vector2 pos) => Input.ParseInputEvent(new InputEventScreenDrag { Index = 0, Position = pos });
@@ -236,12 +241,28 @@ public static class Wa2Autoplay
 				Swipe(new Vector2(400, 300), new Vector2(700, 300));
 				_gStep = 45; _gTime = 0; return true;
 			case 45:
-				Out($"SWIPE right -> skip = {e.SkipMode} kind = {e.SkipKind} (want True 1)");
+				Out($"SWIPE right -> skip = {e.SkipMode} (want False: swipes no longer skip)");
 				Swipe(new Vector2(700, 300), new Vector2(400, 300));
 				_gStep = 46; _gTime = 0; return true;
 			case 46:
-				Out($"SWIPE left -> skip = {e.SkipMode} kind = {e.SkipKind} (want True 2)");
+				Out($"SWIPE left -> skip = {e.SkipMode} (want False)");
+				_savedCut = e.Prefs.GetConfig("msg_cut_optin");
+				e.Prefs.SetConfig("msg_cut_optin", 1);   // Skip Mode "All", so the button works on any line
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonDown);   // hold the skip button
+				_gStep = 460; _gTime = 0; return true;
+			case 460:
+				if (_gTime < 0.6) return true;
+				Out($"SKIP button held 0.6 s -> skip = {e.SkipMode} (want True; line read = {e.HasReadMessage})");
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonUp);
+				Out($"SKIP button released -> skip = {e.SkipMode} (want False)");
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonDown);   // quick tap
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonUp);
+				Out($"SKIP button tapped -> skip = {e.SkipMode} (want True)");
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonDown);
+				e.AdvMain.SkipButton.EmitSignal(BaseButton.SignalName.ButtonUp);
+				Out($"SKIP button tapped again -> skip = {e.SkipMode} (want False)");
 				e.StopSkip();
+				e.Prefs.SetConfig("msg_cut_optin", _savedCut);
 				_gStep = 47; _gTime = 0; return true;
 			case 47:
 				if (_gTime < 1.0) return true;
@@ -391,14 +412,15 @@ public static class Wa2Autoplay
 			_gStep++; _gTime = 0;
 			if (phone && _gStep == 3)
 			{
-				// tap "Centered" (Text Position) on OPTION 4 and check the setting and the Details box
+				// tap "Larger" (Text Size) on OPTION 4 and check the setting and the lit button
 				var page = e.UiMgr.OptionsMenu.PageList.GetChild(Wa2PhoneOptions.PageIndex);
 				var btns = page.GetChildren().OfType<Wa2Button>().ToList();
-				btns[11].EmitSignal(BaseButton.SignalName.ButtonDown);
-				Out($"OPTION4 tap Centered -> CenterText = {Wa2Phone.CenterText} (want True); lit {btns[11].ButtonPressed}, Like PC lit {btns[10].ButtonPressed}");
+				_optTextIdx = Wa2Phone.TextIdx;
+				btns[9].EmitSignal(BaseButton.SignalName.ButtonDown);
+				Out($"OPTION4 tap Larger -> TextIdx = {Wa2Phone.TextIdx} (want 3); lit {btns[9].ButtonPressed}, Small lit {btns[6].ButtonPressed}");
 				return;
 			}
-			if (phone && _gStep == 4) { Wa2Phone.SetCenter(false); Finish(0, "options saved"); return; }
+			if (phone && _gStep == 4) { Wa2Phone.SetText(_optTextIdx); Finish(0, "options saved"); return; }
 			if (_gStep >= 3) { Finish(0, "options saved"); return; }
 			e.UiMgr.OptionsMenu.UpdatePage(_gStep);
 			return;
@@ -450,10 +472,43 @@ public static class Wa2Autoplay
 				Finish(0, "import done");
 				return;
 			}
+			// `--auto-on`: switch Auto on at the first line (as the side-bar button does), for shots of
+			// the Auto indicator and button state.
+			if (Args.Contains("--auto-on") && !_autoPressed)
+			{
+				_autoPressed = true; _settled = 0;
+				e.AdvMain.OnAutoButtonDown();
+				Out($"auto-on: AutoMode={e.AutoMode}");
+				return;
+			}
+			// `--skip-test`: press the skip button on the first line, then report where skipping stops.
+			if (Args.Contains("--skip-test"))
+			{
+				if (!_skipPressed)
+				{
+					_skipPressed = true;
+					Out($"skiptest: msg_cut_optin={e.Prefs.GetConfig("msg_cut_optin")} first line {k} read={e.HasReadMessage}");
+					e.AdvMain.OnSkipButtonDown();
+					Out($"skiptest: skip button -> SkipMode={e.SkipMode}");
+					_settled = 0;
+					if (e.SkipMode) return;
+					Finish(0, "skiptest: skip refused on an unread line");
+					return;
+				}
+				Out($"skiptest: stopped at {k} read={e.HasReadMessage} SkipMode={e.SkipMode}");
+				Finish(0, "skiptest done");
+				return;
+			}
 			Save(k);
 			_done++;
 			Out($"{k} saved");
 			_settled = 0; _idle = 0; _nudge = 0;
+			if (_done == ToggleAt)
+			{
+				Wa2Phone.SetSharper(!Wa2Phone.Sharper);
+				Out($"pictures -> {(Wa2Phone.Sharper ? "Sharper" : "Original")}");
+				return;    // no click: the same line settles and is saved again as <key>_2
+			}
 			if (_done >= Lines && !GestureTest && !Args.Contains("--backlog-voice-test") && !Args.Contains("--assist-test")) { Finish(0, "done"); return; }
 			if ((GestureTest || Args.Contains("--backlog-voice-test")) && _done >= 3) return;
 			if (Args.Contains("--assist-test") && _done >= 2) return;

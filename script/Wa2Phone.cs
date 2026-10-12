@@ -14,10 +14,15 @@ public partial class Wa2Phone : Control
 	public static int TextIdx = 2, FillIdx = 0;
 	public static bool AutoHide = true;
 	public static int PanoIdx = 2;
+	// Text box look: Full (as the PC), Light (fill and ring dimmed), Ring (no fill, outlined text),
+	// Clear (no box, a soft fade at the bottom, outlined text). `--box=N` overrides for tests.
+	public static readonly string[] BoxNames = { "Full", "Light", "Ring", "Clear" };
+	public static int BoxIdx = 0;
 	public static readonly string[] PanoNames = { "Off", "Half", "Full" };
 	public static bool GuideSeen;
-	public static bool CenterText;          // Text Position: false = like PC, true = centred
 	public static bool Haptics = true;
+	// Pictures: the 2x waifu2x copies in Wa2Res/hires (Sharper) or the game's own art (Original).
+	public static bool Sharper = true;
 	private static Wa2Phone _panel;
 	private readonly List<(Wa2Label lab, Func<bool> on)> _opts = new();
 	private static readonly Color Cyan = new(0.55f, 0.88f, 1f), Dim = new(0.72f, 0.76f, 0.8f);
@@ -32,22 +37,24 @@ public partial class Wa2Phone : Control
 			GuideSeen = (bool)c.GetValue("phone", "guide_seen", false);
 			AutoHide = (bool)c.GetValue("phone", "autohide", true);
 			PanoIdx = Math.Clamp((int)c.GetValue("phone", "pano", 2), 0, 2);
-			CenterText = (bool)c.GetValue("phone", "center", false);
+			BoxIdx = Math.Clamp((int)c.GetValue("phone", "box", 0), 0, BoxNames.Length - 1);
 			Haptics = (bool)c.GetValue("phone", "haptics", true);
+			Sharper = (bool)c.GetValue("phone", "sharper", true);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
-		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]);
+		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]); else if (a.StartsWith("--box=")) BoxIdx = int.Parse(a["--box=".Length..]);
 	}
 	public static void Save()
 	{
 		var c = new ConfigFile();
-		c.SetValue("phone", "center", CenterText);
 		c.SetValue("phone", "haptics", Haptics);
 		c.SetValue("phone", "text", TextIdx);
 		c.SetValue("phone", "fill", FillIdx);
 		c.SetValue("phone", "guide_seen", GuideSeen);
 		c.SetValue("phone", "autohide", AutoHide);
 		c.SetValue("phone", "pano", PanoIdx);
+		c.SetValue("phone", "box", BoxIdx);
+		c.SetValue("phone", "sharper", Sharper);
 		c.Save(Cfg);
 	}
 
@@ -93,8 +100,7 @@ public partial class Wa2Phone : Control
 			("Hold", "Auto mode on / off"),
 			("Swipe down", "backlog"),
 			("Swipe up", "hide the text box  (also: two-finger tap)"),
-			("Swipe right", "skip text you have read"),
-			("Swipe left", "skip everything"),
+			("Skip button", "hold to skip, tap for on / off"),
 		};
 		for (int i = 0; i < rows.Length; i++)
 		{
@@ -128,9 +134,10 @@ public partial class Wa2Phone : Control
 		foreach (var (lab, on) in _opts) { lab.Color = on() ? Cyan : Dim; lab.QueueRedraw(); lab.SetText(lab.Text); }
 	}
 	public static void SetPano(int k) { PanoIdx = k; Save(); }
-	public static void SetCenter(bool on) { CenterText = on; Save(); Wa2EngineMain.Engine.AdvMain.ApplyTextScale(); }
+	public static void SetBox(int k) { BoxIdx = k; Save(); Wa2EngineMain.Engine.AdvMain.ApplyTextScale(); }
 	public static void SetAutoHide(bool on) { AutoHide = on; Save(); }
 	public static void SetHaptics(bool on) { Haptics = on; Save(); }
+	public static void SetSharper(bool on) { if (on == Sharper) return; Sharper = on; Save(); Wa2Resource.ReloadPictures(); }
 	public static void OpenGuide(Wa2EngineMain e) => Open(e);
 	public static void SetText(int k)
 	{
