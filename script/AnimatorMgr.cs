@@ -7,11 +7,19 @@ public class Animator
   private Tween _tween;
   private float _duration;
   public bool Wait = true;
+  private bool _finished;
   public Animator(Tween tween, float duration)
   {
     _tween = tween;
     _duration = duration;
     // _tween.SetParallel(true);
+    // Stepped by AnimatorMgr with a capped delta instead of by the scene tree (see MaxStep).
+    _tween.Pause();
+    _tween.Finished += () => _finished = true;
+  }
+  public void Step(double delta)
+  {
+    if (IsActive()) _tween.CustomStep(delta);
   }
   public void Finish()
   {
@@ -23,7 +31,7 @@ public class Animator
   }
   public bool IsActive()
   {
-    return _tween != null && _tween.IsValid() && _tween.IsRunning();
+    return _tween != null && !_finished && _tween.IsValid();
   }
 }
 [GlobalClass]
@@ -31,9 +39,16 @@ public partial class AnimatorMgr : Node
 {
   public Wa2EngineMain _engine;
   public List<Animator> _animators = new();
+  // Longest step one frame may take in a transition. A frame that stalls while a new picture loads
+  // (decode + upload, longer on the phone and with Sharper 2x art) used to count in full, so a 0.5 s
+  // fade could open 30% done (desktop, 143 ms stall) and look like a cut on the phone. The PC game
+  // caps its step too: under Wine its fades stretched once frames took over ~0.1 s
+  // (research/10-transition-timing.md). Normal frames (1/60, Low Power 1/30) are not affected.
+  public const double MaxStep = 0.05;
   public override void _Ready()
   {
     _engine = Wa2EngineMain.Engine;
+    ProcessPriority = 1000;   // after the engine, as the scene tree's own tween pass was
   }
   public void AddAnimator(Animator animator)
   {
@@ -60,8 +75,10 @@ public partial class AnimatorMgr : Node
   }
   public override void _Process(double delta)
   {
+    double step = Math.Min(delta, MaxStep);
     for (int i = 0; i < _animators.Count; i++)
     {
+      _animators[i].Step(step);
       if (!_animators[i].IsActive())
       {
         _animators.RemoveAt(i);

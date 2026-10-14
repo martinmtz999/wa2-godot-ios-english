@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 // Unattended test mode (research/05-pc-comparison.md). Combine with --start=<script>:
@@ -473,9 +474,31 @@ public static class Wa2Autoplay
 		return true;
 	}
 
+	// `--framestat` (with --trace): every frame, sample a 64x36 grid of the screen and log
+	// `fstat <frame#> <mean luma> <mean |change| vs the previous frame>` (0-255), the same measure
+	// as tools/pctrace's WA2_FRAMESTAT, so transition lengths can be compared with the PC.
+	static readonly bool FrameStatOn = Args.Contains("--framestat");
+	static readonly byte[] _fsPrev = new byte[64 * 36];
+	static long _fsN;
+	static void FrameStat()
+	{
+		var img = Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage();
+		int w = img.GetWidth(), h = img.GetHeight();
+		long sum = 0, diff = 0;
+		for (int gy = 0; gy < 36; gy++)
+			for (int gx = 0; gx < 64; gx++)
+			{
+				var c = img.GetPixel(gx * w / 64 + w / 128, gy * h / 36 + h / 72);
+				int l = (c.B8 * 29 + c.G8 * 150 + c.R8 * 77) >> 8;
+				sum += l; diff += Math.Abs(l - _fsPrev[gy * 64 + gx]); _fsPrev[gy * 64 + gx] = (byte)l;
+			}
+		Wa2Trace.Log("fstat", ++_fsN, (sum / 2304.0).ToString("F2", CultureInfo.InvariantCulture), (diff / 2304.0).ToString("F2", CultureInfo.InvariantCulture));
+	}
+
 	public static void Tick(double delta)
 	{
 		if (!Enabled) return;
+		if (FrameStatOn) FrameStat();
 		var e = Wa2EngineMain.Engine;
 		if (AssistTick(delta, e)) return;
 		if (BacklogVoiceTick(delta, e)) return;

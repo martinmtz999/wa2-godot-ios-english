@@ -43,6 +43,10 @@ public class Wa2Resource
 	// editor builds can compress; this makes them keep textures uncompressed like the phone).
 	private static readonly long ImageCacheMaxBytes = (System.Array.Find(OS.GetCmdlineUserArgs(), a => a.StartsWith("--image-cache-mb=")) is string mb
 		&& long.TryParse(mb["--image-cache-mb=".Length..], out long m) ? m : 600L) * 1024 * 1024;
+	// `--slow-load-ms=N` (test): every picture that is not cached takes N ms longer to load, to
+	// imitate the phone's slower decode on a desktop (transition timing tests).
+	private static readonly int SlowLoadMs = System.Array.Find(OS.GetCmdlineUserArgs(), a => a.StartsWith("--slow-load-ms=")) is string sl
+		&& int.TryParse(sl["--slow-load-ms=".Length..], out int slm) ? slm : 0;
 	private static readonly bool NoTextureCompress = System.Array.IndexOf(OS.GetCmdlineUserArgs(), "--no-texture-compress") >= 0;
 	private static readonly Dictionary<string, long> _imageCacheSizes = new();
 	public static long ImageCacheBytes { get; private set; }
@@ -308,6 +312,7 @@ public class Wa2Resource
 		{
 			return cached;
 		}
+		if (SlowLoadMs > 0) OS.DelayMsec(SlowLoadMs);
 		byte[] hi = LoadHiResBuffer(path);
 		if (hi != null)
 		{

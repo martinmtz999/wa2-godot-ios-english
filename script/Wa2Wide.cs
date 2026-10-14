@@ -229,24 +229,26 @@ public partial class Wa2Wide : Node
 	private bool _lowApplied;
 	private double _powerCheck;
 	// Auto-hide (Wa2Phone.AutoHide): buttons fade out while reading; a plain tap on a side bar shows
-	// or hides them; they fade out again after 5 s without use. Ornaments stay.
+	// or hides them; they fade out again after HideAfter s without use. Ornaments stay.
+	// 5 s was too short to reach for one after reading a line (user, 2026-10-14).
+	private const double HideAfter = 12;
 	private float _btnAlpha = 1f;
-	private double _hideIn = 5;
+	private double _hideIn = HideAfter;
 	private bool _btnShown = true;
 	public static void TapOnRail()
 	{
 		if (_inst == null) return;
 		if (!Wa2Phone.AutoHide) { _inst._e.ClickRailTap(); return; }
 		_inst._btnShown = !_inst._btnShown;
-		_inst._hideIn = 5;
+		_inst._hideIn = HideAfter;
 	}
-	public static void Touched() { if (_inst != null) _inst._hideIn = 5; }
+	public static void Touched() { if (_inst != null) _inst._hideIn = HideAfter; }
 	public static bool ButtonsShown => _inst == null || _inst._btnShown;
-	public static void ShowButtons() { if (_inst != null) { _inst._btnShown = true; _inst._hideIn = 5; _inst._btnAlpha = 1; } }
+	public static void ShowButtons() { if (_inst != null) { _inst._btnShown = true; _inst._hideIn = HideAfter; _inst._btnAlpha = 1; } }
 	private void UpdateButtonFade(double delta)
 	{
 		if (!Wa2Phone.AutoHide) _btnShown = true;
-		foreach (var (btn, _, _) in _btns) if (btn.IsPressed()) { _btnShown = true; _hideIn = 5; }   // e.g. holding Skip
+		foreach (var (btn, _, _) in _btns) if (btn.IsPressed()) { _btnShown = true; _hideIn = HideAfter; }   // e.g. holding Skip
 		else if (_btnShown && (_hideIn -= delta) <= 0) _btnShown = false;
 		float target = _btnShown ? 1f : 0f;
 		_btnAlpha = Mathf.MoveToward(_btnAlpha, target, (float)delta / 0.25f);

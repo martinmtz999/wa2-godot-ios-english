@@ -99,9 +99,11 @@ public static class Wa2PhoneOptions
 		var tab = new Wa2Button
 		{
 			ToggleMode = true, KeepPressedOutside = true, ButtonGroup = first.ButtonGroup, ClickStream = first.ClickStream,
-			TextureNormal = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 0, 192, 32) },
-			TextureHover = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 0, 192, 32) },
-			TexturePressed = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 32, 192, 32) },
+			// Same rows as the original tabs (OptionsMenu.tscn): bottom row = not selected, top = selected.
+			TextureNormal = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 64, 192, 32) },
+			TextureHover = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 64, 192, 32) },
+			TextureDisabled = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 64, 192, 32) },
+			TexturePressed = new AtlasTexture { Atlas = tabs, Region = new Rect2(0, 0, 192, 32) },
 			CustomMinimumSize = new Vector2(192, 32),
 		};
 		tab.ButtonDown += () => m.UpdatePage(PageIndex);
