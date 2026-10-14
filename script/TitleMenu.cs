@@ -140,6 +140,10 @@ public partial class TitleMenu : Control
 	{
 		if (!CanOpenContent())
 			return;
+		// Continue opens on the page of the newest own save; quick save and autosave are not counted
+		// (user, 2026-10-14). The in-game Load keeps the last page used.
+		int newest = _engine.UiMgr.LoadSaveMenu.GetNewDataIdx(Wa2Quick.QuickSlot);
+		if (newest >= 0) _engine.UiMgr.LoadSaveMenu._pageNum = newest / 10;
 		_engine.UiMgr.OpenLoadMenu();
 	}
 	public void OnSpecialButtonDown()

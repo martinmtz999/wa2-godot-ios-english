@@ -185,11 +185,12 @@ public partial class LoadSaveMenu : BasePage
       NewDataTexture.Hide();
     }
   }
-  public int GetNewDataIdx()
+  // Newest save among slots below `end` (100 = all; Wa2Quick.QuickSlot leaves out quick and auto).
+  public int GetNewDataIdx(int end = 100)
   {
     int num = 0;
     int idx = -1;
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < end; i++)
     {
       if (IsValidSaveData(i))
       {

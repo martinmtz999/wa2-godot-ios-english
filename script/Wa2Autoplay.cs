@@ -89,11 +89,13 @@ public static class Wa2Autoplay
 			if (!_opened)
 			{
 				_opened = true;
-				if (Args.Contains("--title-open=load")) Wa2EngineMain.Engine.UiMgr.OpenLoadMenu();
+				// load goes through the title's Continue button (opens on the newest own save's page)
+				if (Args.Contains("--title-open=load")) Wa2EngineMain.Engine.UiMgr.TitleMenu.OnLoadButtonDown();
 				else Wa2EngineMain.Engine.UiMgr.OpenCGModeMenu();
 				return;
 			}
 			if (_titleTime < 7) return;
+			if (Args.Contains("--title-open=load")) GD.Print($"autoplay: Continue opened load page {Wa2EngineMain.Engine.UiMgr.LoadSaveMenu._pageNum + 1}");
 		}
 		Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage().SavePng(TitleShot);
 		GD.Print("autoplay: title saved");
