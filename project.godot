@@ -15,7 +15,9 @@ run/main_scene="uid://bblla2fup6lge"
 config/features=PackedStringArray("4.7", "C#", "Mobile")
 run/max_fps=60
 boot_splash/bg_color=Color(0, 0, 0, 1)
-boot_splash/image="uid://bselsbmxrq0g7"
+; PIC1_wide.png: PIC1.PNG widened to the iPhone 15 Pro Max shape (2796x1290); the middle is the
+; original art, the side strips were generated (FLUX.2 klein 4B + outpaint LoRA, seed 1; user pick).
+boot_splash/image="res://PIC1_wide.png"
 config/icon="res://icon.svg"
 
 [audio]
