@@ -17,9 +17,10 @@ public class Animator
     _tween.Pause();
     _tween.Finished += () => _finished = true;
   }
+  public float Speed = 1f;   // < 1 plays slower (Options -> Transitions)
   public void Step(double delta)
   {
-    if (IsActive()) _tween.CustomStep(delta);
+    if (IsActive()) _tween.CustomStep(delta * Speed);
   }
   public void Finish()
   {
@@ -117,6 +118,7 @@ public partial class AnimatorMgr : Node
   {
     Tween tween = CreateTween();
     Animator animator = new(tween, time);
+    animator.Speed = 1f / Wa2Phone.TransScale;
     AddAnimator(animator);
     image.SetBlend(0f);
     if (image.GetMaskTexture() == null)
@@ -147,6 +149,7 @@ public partial class AnimatorMgr : Node
   {
     Tween tween = CreateTween();
     Animator animator = new(tween, time);
+    animator.Speed = 1f / Wa2Phone.TransScale;
     AddAnimator(animator);
     image.Show();
     image.SetBlend(0f);
@@ -219,6 +222,7 @@ public partial class AnimatorMgr : Node
   {
     Tween tween = CreateTween();
     Animator animator = new(tween, time);
+    animator.Speed = 1f / Wa2Phone.TransScale;
     AddAnimator(animator);
     image.SetNextTexture(texture);
     tween.TweenMethod(Callable.From<float>(image.SetBlend), 0f, 1f, time);
@@ -304,6 +308,7 @@ public partial class AnimatorMgr : Node
     // GD.Print("时间", time);
     Tween tween = CreateTween();
     Animator animator = new(tween, time);
+    animator.Speed = 1f / Wa2Phone.TransScale;
     AddAnimator(animator);
     tween.TweenMethod(Callable.From<Color>(_engine.SetFBColor), _engine.GetFBColor(), color, time);
   }
@@ -312,6 +317,7 @@ public partial class AnimatorMgr : Node
     // GD.Print("时间", time);
     Tween tween = CreateTween();
     Animator animator = new(tween, time);
+    animator.Speed = 1f / Wa2Phone.TransScale;
     AddAnimator(animator);
     tween.TweenMethod(Callable.From<Color>(_engine.SetFBColor), color, new Color(0.5f, 0.5f, 0.5f, 1.0f), time);
   }

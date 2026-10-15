@@ -23,6 +23,13 @@ public partial class Wa2Phone : Control
 	public static bool Haptics = true;
 	// Pictures: the 2x waifu2x copies in Wa2Res/hires (Sharper) or the game's own art (Original).
 	public static bool Sharper = true;
+	// Transitions (user, 2026-10-15: fades felt too quick): background, colour and character fades
+	// last the script's length x this. Pans, shakes and the text box keep their timing.
+	public static readonly float[] TransSpeeds = { 1f, 1.5f, 2f };
+	public static readonly string[] TransNames = { "Normal", "Slow", "Slower" };
+	public static int TransIdx = 1;
+	public static float TransScale => TransSpeeds[TransIdx];
+	public static void SetTrans(int k) { TransIdx = Math.Clamp(k, 0, TransSpeeds.Length - 1); Save(); }
 	private static Wa2Phone _panel;
 	private readonly List<(Wa2Label lab, Func<bool> on)> _opts = new();
 	private static readonly Color Cyan = new(0.55f, 0.88f, 1f), Dim = new(0.72f, 0.76f, 0.8f);
@@ -40,6 +47,7 @@ public partial class Wa2Phone : Control
 			BoxIdx = Math.Clamp((int)c.GetValue("phone", "box", 0), 0, BoxNames.Length - 1);
 			Haptics = (bool)c.GetValue("phone", "haptics", true);
 			Sharper = (bool)c.GetValue("phone", "sharper", true);
+			TransIdx = Math.Clamp((int)c.GetValue("phone", "trans", 1), 0, TransSpeeds.Length - 1);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
 		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]); else if (a.StartsWith("--box=")) BoxIdx = int.Parse(a["--box=".Length..]);
@@ -55,6 +63,7 @@ public partial class Wa2Phone : Control
 		c.SetValue("phone", "pano", PanoIdx);
 		c.SetValue("phone", "box", BoxIdx);
 		c.SetValue("phone", "sharper", Sharper);
+		c.SetValue("phone", "trans", TransIdx);
 		c.Save(Cfg);
 	}
 

@@ -503,6 +503,7 @@ public class Wa2Func
 
 	public bool C(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("chr", string.Join(" ", args.ConvertAll(a => a.GetInt())));
 
 		_engine.AddChar(new CharItem
 		{
@@ -528,6 +529,7 @@ public class Wa2Func
 	}
 	public bool CR(List<Wa2Var> args)
 	{
+		Wa2Trace.Log("chrrm", string.Join(" ", args.ConvertAll(a => a.GetInt())));
 		_engine.RemoveChar(args[0].GetInt());
 		_engine.UpdateChar(args[2].GetInt() * _engine.FrameTime);
 		return false;

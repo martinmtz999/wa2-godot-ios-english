@@ -130,6 +130,71 @@ public partial class BackLogMenu : BasePage
   }
 
 
+  // Finger scrolling (user, 2026-10-15): drag the entries up or down like a web page, and a flick
+  // keeps coasting and slows down. The list moves one entry per row height of finger travel; the
+  // scroll bar still works. A drag that starts on a voice button may also play that voice.
+  private bool _dragging;
+  private Vector2 _dragStart;
+  private float _dragAcc, _vel;
+  private ulong _lastDragUs;
+  public override void _Input(InputEvent @event)
+  {
+    if (!Visible || _engine == null || _engine.UiMgr.UiQueue.Count == 0 || _engine.UiMgr.UiQueue.Peek() != this) return;
+    if (@event is InputEventScreenTouch t && t.Index == 0)
+    {
+      if (t.Pressed) { _dragStart = t.Position; _dragging = false; _dragAcc = 0; _vel = 0; }
+      else if (_dragging)
+      {
+        _dragging = false;
+        if ((Time.GetTicksUsec() - _lastDragUs) / 1e6f > 0.08f) _vel = 0;   // finger stopped before lifting: no coasting
+        GetViewport().SetInputAsHandled();
+      }
+      return;
+    }
+    if (@event is InputEventScreenDrag d && d.Index == 0)
+    {
+      if (!_dragging && (d.Position - _dragStart).Length() > 16) _dragging = true;
+      if (!_dragging) return;
+      ulong now = Time.GetTicksUsec();
+      float dt = Mathf.Max((now - _lastDragUs) / 1e6f, 1f / 120f);
+      _lastDragUs = now;
+      _vel = dt > 0.1f ? 0 : Mathf.Lerp(_vel, d.Relative.Y / dt, 0.6f);
+      MoveBy(d.Relative.Y);
+      GetViewport().SetInputAsHandled();
+      return;
+    }
+    if (@event is InputEventMouseButton mb && mb.Pressed && (mb.ButtonIndex == MouseButton.WheelUp || mb.ButtonIndex == MouseButton.WheelDown))
+      Step(mb.ButtonIndex == MouseButton.WheelUp ? -1 : 1);
+  }
+  public override void _Process(double delta)
+  {
+    if (_dragging || Mathf.Abs(_vel) < 40f) { if (!_dragging) _vel = 0; return; }
+    MoveBy(_vel * (float)delta);
+    _vel *= Mathf.Pow(0.04f, (float)delta);   // a flick fades out in about a second
+  }
+  private float RowHeight()
+  {
+    if (BackLogItems.GetChildCount() < 2) return 120f;
+    float a = BackLogItems.GetChild<Control>(0).GetGlobalTransformWithCanvas().Origin.Y;
+    float b = BackLogItems.GetChild<Control>(1).GetGlobalTransformWithCanvas().Origin.Y;
+    return Mathf.Abs(b - a) > 8 ? Mathf.Abs(b - a) : 120f;
+  }
+  // Finger moving down shows older entries (the content follows the finger).
+  private void MoveBy(float dy)
+  {
+    float rh = RowHeight();
+    _dragAcc += dy;
+    while (_dragAcc >= rh) { _dragAcc -= rh; if (!Step(-1)) { _dragAcc = 0; _vel = 0; } }
+    while (_dragAcc <= -rh) { _dragAcc += rh; if (!Step(1)) { _dragAcc = 0; _vel = 0; } }
+  }
+  private bool Step(int n)
+  {
+    double v = Math.Clamp(ScrollBar.Value + n, ScrollBar.MinValue, ScrollBar.MaxValue);
+    if (v == ScrollBar.Value) return false;
+    ScrollBar.Value = v;   // ValueChanged redraws the rows
+    return true;
+  }
+
   public void OnScrollBarValChanged(double val)
   {
     int pos = (int)val;

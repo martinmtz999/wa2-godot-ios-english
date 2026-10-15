@@ -111,14 +111,65 @@ public static class Wa2Autoplay
 	static void Touch(int index, bool down, Vector2 pos) =>
 		Input.ParseInputEvent(new InputEventScreenTouch { Index = index, Pressed = down, Position = pos });
 	static void Drag(Vector2 pos) => Input.ParseInputEvent(new InputEventScreenDrag { Index = 0, Position = pos });
+	// `--backlog-scroll-test`: after 12 lines open the backlog, drag down slowly (older entries, no
+	// coasting), then flick up (newer entries, keeps coasting), and log the scroll position.
+	static readonly bool BacklogScrollTest = Args.Contains("--backlog-scroll-test");
+	static int _bStep, _bN; static double _bTime, _bV0, _bV1, _bV2; static Vector2 _bPos;
+	static void DragBy(Vector2 rel) { _bPos += rel; Input.ParseInputEvent(new InputEventScreenDrag { Index = 0, Position = _bPos, Relative = rel }); }
+	static bool BacklogScrollTick(double delta, Wa2EngineMain e)
+	{
+		if (!BacklogScrollTest || _done < 12) return false;
+		_bTime += delta;
+		var sb = e.UiMgr.BackLogMenu.ScrollBar;
+		switch (_bStep)
+		{
+			case 0: e.AdvMain.OnBackLogButtonDown(); _bStep = 1; _bTime = 0; return true;
+			case 1:
+				if (_bTime < 1.5) return true;
+				_bV0 = sb.Value; Out($"BACKLOG open at entry {_bV0} of max {sb.MaxValue}");
+				_bPos = DisplayServer.WindowGetSize() / 2; Touch(0, true, _bPos); _bN = 0; _bStep = 2; return true;
+			case 2:   // slow drag down: 40 frames x 30 px, then hold still 0.3 s, then lift
+				if (_bN++ < 40) { DragBy(new Vector2(0, 30)); return true; }
+				_bStep = 3; _bTime = 0; return true;
+			case 3:
+				if (_bTime < 0.3) return true;
+				Touch(0, false, _bPos); _bStep = 4; _bTime = 0; return true;
+			case 4:
+				if (_bTime < 1.0) return true;
+				_bV1 = sb.Value; Save("backlog-dragged");
+				Out($"BACKLOG slow drag down 1200 px -> entry {_bV0} -> {_bV1} (want lower; no coasting after the lift)");
+				_bPos = DisplayServer.WindowGetSize() / 2; Touch(0, true, _bPos); _bN = 0; _bStep = 5; return true;
+			case 5:   // flick up: 5 frames x 60 px and lift at once
+				if (_bN++ < 5) { DragBy(new Vector2(0, -60)); return true; }
+				Touch(0, false, _bPos); _bStep = 6; _bTime = 0; return true;
+			case 6:
+				if (_bTime < 0.05) return true;
+				_bV2 = sb.Value; _bStep = 7; _bTime = 0; return true;
+			case 7:
+				if (_bTime < 2.0) return true;
+				Out($"BACKLOG flick up 300 px -> entry {_bV1} -> {_bV2} at the lift -> {sb.Value} after 2 s (want it to keep going after the lift)");
+				Finish(0, "backlog scroll test done"); _bStep = 9; return true;
+		}
+		return true;
+	}
+
 	static bool GestureTick(double delta, Wa2EngineMain e)
 	{
 		if (!GestureTest || _done < 3) return false;
-		if (_gStep < 0) { _gStep = 0; _gTime = 0; }
+		if (_gStep < 0) { _gStep = 100; _gTime = 0; }
 		_gTime += delta;
 		var top = e.UiMgr.UiQueue.Peek()?.Name.ToString();
 		switch (_gStep)
 		{
+			case 100:   // Auto on, then a tap: Auto goes off and the line stays
+				if (!e.AutoMode) e.AdvMain.OnAutoButtonDown();
+				_gIdx = e.CurMessageIdx;
+				Touch(0, true, new Vector2(640, 300)); Touch(0, false, new Vector2(640, 300));
+				_gStep = 101; _gTime = 0; return true;
+			case 101:
+				if (_gTime < 1.0) return true;
+				Out($"GESTURE tap during Auto -> auto = {e.AutoMode} (want False); message {_gIdx} -> {e.CurMessageIdx} (want same)");
+				_gStep = 0; _gTime = 0; return true;
 			case 0:   // swipe down
 				Touch(0, true, new Vector2(640, 250));
 				for (int y = 270; y <= 430; y += 40) Drag(new Vector2(645, y));
@@ -425,8 +476,10 @@ public static class Wa2Autoplay
 				Out($"SWITCH A: after app switch SkipMode {e.SkipMode} Skipping {e.Skipping} (want False False)");
 				_swStep = 20; _swTime = 0; return true;
 			case 20:
-				if (_swTime < 0.3) return true;              // a line the skip had already requested may still land
-				Out($"SWITCH A: lines in the first 0.3 s: {e.CurMessageIdx - _swIdx} (at most 1)");
+				// a line the skip had already requested may still land, after its fade (Transitions: Slower
+				// stretches a 0.25 s sprite fade to 0.5 s; with 0.3 s it landed in the next window, 2026-10-15)
+				if (_swTime < 0.8) return true;
+				Out($"SWITCH A: lines in the first 0.8 s: {e.CurMessageIdx - _swIdx} (at most 1)");
 				_swIdx = e.CurMessageIdx;
 				_swStep = 2; _swTime = 0; return true;
 			case 2:
@@ -546,6 +599,7 @@ public static class Wa2Autoplay
 			e.UiMgr.OptionsMenu.UpdatePage(_gStep);
 			return;
 		}
+		if (BacklogScrollTick(delta, e)) return;
 		if (GestureTick(delta, e)) return;
 		if (SwitchTick(delta, e)) return;
 		// `--film=N`: after each click, save every 2nd frame for N frames (to see transitions).

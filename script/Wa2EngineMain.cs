@@ -1239,6 +1239,14 @@ public void ClickAdv(bool click = false)
 			StopSkip();
 			flag = false;
 		}
+		// A tap while Auto is on turns Auto off and stays on this line, as a tap stops Skip
+		// (user, 2026-10-15). The next tap advances.
+		else if (AutoMode && AdvMain.Visible)
+		{
+			StopAutoMode();
+			Wa2Quick.Haptic();
+			flag = false;
+		}
 		if (!AdvMain.Visible && !VideoPlayer.IsPlaying() && UiMgr.UiQueue.Peek() == UiMgr.AdvMain && AdvMain.State == Wa2AdvMain.AdvState.HIDE)
 		{
 			AdvMain.Show();

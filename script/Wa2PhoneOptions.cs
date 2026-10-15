@@ -29,6 +29,8 @@ public static class Wa2PhoneOptions
 				"Size of the letters. The text box stays the size of the PC's."),
 			new Row("Text Box", Wa2Phone.BoxNames, () => Wa2Phone.BoxIdx, Wa2Phone.SetBox,
 				"How much the box covers the art: full, lighter, only its ring, or none (outlined text)."),
+			new Row("Transitions", Wa2Phone.TransNames, () => Wa2Phone.TransIdx, Wa2Phone.SetTrans,
+				"Scene, colour and character fades: as the script times them, 1.5x or 2x longer."),
 		}),
 		("Control Setting", new[]
 		{
