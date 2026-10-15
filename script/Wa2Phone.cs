@@ -27,7 +27,7 @@ public partial class Wa2Phone : Control
 	// last the script's length x this. Pans, shakes and the text box keep their timing.
 	public static readonly float[] TransSpeeds = { 1f, 1.5f, 2f };
 	public static readonly string[] TransNames = { "Normal", "Slow", "Slower" };
-	public static int TransIdx = 1;
+	public static int TransIdx = 0;   // Normal: the "too quick" report was the 2x snap bug (bg_mask), not the lengths
 	public static float TransScale => TransSpeeds[TransIdx];
 	public static void SetTrans(int k) { TransIdx = Math.Clamp(k, 0, TransSpeeds.Length - 1); Save(); }
 	private static Wa2Phone _panel;
@@ -47,7 +47,7 @@ public partial class Wa2Phone : Control
 			BoxIdx = Math.Clamp((int)c.GetValue("phone", "box", 0), 0, BoxNames.Length - 1);
 			Haptics = (bool)c.GetValue("phone", "haptics", true);
 			Sharper = (bool)c.GetValue("phone", "sharper", true);
-			TransIdx = Math.Clamp((int)c.GetValue("phone", "trans", 1), 0, TransSpeeds.Length - 1);
+			TransIdx = Math.Clamp((int)c.GetValue("phone", "trans", 0), 0, TransSpeeds.Length - 1);
 		}
 		if (!Wa2AdvMain.TextScaleFromArgs) Wa2AdvMain.TextScale = TextSizes[TextIdx];
 		foreach (var a in OS.GetCmdlineUserArgs()) if (a.StartsWith("--pano=")) PanoIdx = int.Parse(a["--pano=".Length..]); else if (a.StartsWith("--box=")) BoxIdx = int.Parse(a["--box=".Length..]);

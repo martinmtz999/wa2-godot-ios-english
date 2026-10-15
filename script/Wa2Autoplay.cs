@@ -537,7 +537,7 @@ public static class Wa2Autoplay
 	static long _fsN;
 	static void FrameStat()
 	{
-		var img = Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage();
+		using var img = Wa2EngineMain.Engine.GetViewport().GetTexture().GetImage();   // freed at once: 14 MB per frame at phone size filled WSL's memory
 		int w = img.GetWidth(), h = img.GetHeight();
 		long sum = 0, diff = 0;
 		for (int gy = 0; gy < 36; gy++)
@@ -548,7 +548,12 @@ public static class Wa2Autoplay
 				sum += l; diff += Math.Abs(l - _fsPrev[gy * 64 + gx]); _fsPrev[gy * 64 + gx] = (byte)l;
 			}
 		Wa2Trace.Log("fstat", ++_fsN, (sum / 2304.0).ToString("F2", CultureInfo.InvariantCulture), (diff / 2304.0).ToString("F2", CultureInfo.InvariantCulture));
+		// `--framestat-shots=A-B`: also save every frame between A and B ms after start (with --shots)
+		if (FsShotA >= 0 && Time.GetTicksMsec() >= (ulong)FsShotA && Time.GetTicksMsec() <= (ulong)FsShotB)
+			Save($"f{Time.GetTicksMsec():D6}");
 	}
+	static readonly long FsShotA = Arg("--framestat-shots=") is string fr && long.TryParse(fr.Split('-')[0], out long fa) ? fa : -1;
+	static readonly long FsShotB = Arg("--framestat-shots=") is string fr2 && long.TryParse(fr2.Split('-')[1], out long fb) ? fb : -1;
 
 	public static void Tick(double delta)
 	{
